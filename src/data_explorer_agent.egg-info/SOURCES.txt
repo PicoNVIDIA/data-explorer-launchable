@@ -1,0 +1,10 @@
+pyproject.toml
+src/data_explorer_agent/__init__.py
+src/data_explorer_agent/data_explorer_agent.py
+src/data_explorer_agent/register.py
+src/data_explorer_agent.egg-info/PKG-INFO
+src/data_explorer_agent.egg-info/SOURCES.txt
+src/data_explorer_agent.egg-info/dependency_links.txt
+src/data_explorer_agent.egg-info/entry_points.txt
+src/data_explorer_agent.egg-info/requires.txt
+src/data_explorer_agent.egg-info/top_level.txt
