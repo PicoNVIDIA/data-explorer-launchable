@@ -4,4 +4,7 @@ Version: 0.1.0
 Summary: Custom NeMo Agent Toolkit Workflow
 Classifier: Programming Language :: Python
 Requires-Python: <3.14,>=3.11
+Requires-Dist: jupyter>=1.1.1
+Requires-Dist: nbconvert>=7.16.6
+Requires-Dist: nbformat>=5.10.4
 Requires-Dist: nvidia-nat[langchain]~=1.3
