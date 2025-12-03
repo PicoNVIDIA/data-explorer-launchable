@@ -19,3 +19,13 @@ classifiers = ["Programming Language :: Python"]
 
 [project.entry-points.'nat.components']
 data_explorer_agent = "data_explorer_agent.register"
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.10.7",
+    "numpy>=1.26.4",
+    "pandas>=2.3.3",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.16.3",
+    "seaborn>=0.13.2",
+]

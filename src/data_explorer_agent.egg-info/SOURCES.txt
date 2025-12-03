@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 src/data_explorer_agent/__init__.py
 src/data_explorer_agent/data_explorer_agent.py
