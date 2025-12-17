@@ -1,16 +1,17 @@
 import asyncio
 import argparse
 import csv
+import json
 import os
 import time
 import tempfile
 import yaml
-from datasets import load_dataset
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 from nat.runtime.loader import load_workflow
+from dabstep.download_data import download_dabstep_data
 
 load_dotenv()
 
@@ -21,16 +22,22 @@ IMPORTANT - Answer formatting:
   - Always re-read the question and guidelines before providing your final answer to ensure the format matches.
 """
 
-BASE_CONFIG_PATH = "src/data_explorer_agent/configs/config.yml"
+BASE_CONFIG_PATH = "dabstep/config.yaml"
 
 
-def create_task_config(task_id: str, notebook_path: str) -> str:
-    """Create a temporary config file with the task-specific notebook path."""
+LLM_CHOICES = ["nvidia_build", "openai_proxy"]
+
+
+def create_task_config(task_id: str, notebook_path: str, llm_name: str) -> str:
+    """Create a temporary config file with the task-specific notebook path and LLM."""
     with open(BASE_CONFIG_PATH, "r") as f:
         config = yaml.safe_load(f)
 
     # Update notebook path for this task
     config["function_groups"]["notebook_function_group"]["notebook_path"] = notebook_path
+
+    # Update LLM selection
+    config["workflow"]["llm_name"] = llm_name
 
     # Write to a temporary file
     temp_config = tempfile.NamedTemporaryFile(
@@ -48,7 +55,7 @@ async def run_task_async(config_path: str, user_query: str) -> str:
             return await runner.result()
 
 
-def process_task(task, dataset_path):
+def process_task(task, dataset_path, llm_name):
     """Process a single task and return the result."""
     task_id = task["task_id"]
     question = task["question"]
@@ -62,7 +69,7 @@ def process_task(task, dataset_path):
 
     try:
         # Create task-specific config
-        temp_config_path = create_task_config(task_id, notebook_path)
+        temp_config_path = create_task_config(task_id, notebook_path, llm_name)
 
         # Build the full query with dataset path info
         user_query = f"Dataset files available: {dataset_path}\n\n{question}\n\n{guidelines}\n\n{DABSTEP_PROMPT}"
@@ -104,12 +111,20 @@ def main():
     parser.add_argument("--task-id", type=str, help="Run only this task_id")
     parser.add_argument("--batch-size", type=int, default=5, help="Number of tasks per batch")
     parser.add_argument("--workers", type=int, default=3, help="Number of parallel workers per batch")
+    parser.add_argument("--llm", type=str, choices=LLM_CHOICES, default="openai_proxy",
+                        help=f"LLM to use: {', '.join(LLM_CHOICES)} (default: openai_proxy)")
     args = parser.parse_args()
 
-    # Login using e.g. `huggingface-cli login` to access this dataset
-    ds = load_dataset("adyen/DABstep", "tasks", split="default")  # split: dev or default
-    dataset_path = "./data/acquirer_countries.csv, ./data/fees.json, ./data/manual.md, ./data/merchant_category_codes.csv, ./data/merchant_data.json, ./data/payments-readme.md, ./data/payments.csv"
-    submission_file = f"submission_{ds.split}.csv"
+    print(f"Using LLM: {args.llm}")
+
+    # Download DABstep context data and tasks if not already present
+    download_dabstep_data()
+
+    # Load tasks from local JSON file
+    with open("./data/tasks.json", "r", encoding="utf-8") as f:
+        ds = json.load(f)
+    dataset_path = "./data/context/acquirer_countries.csv, ./data/context/fees.json, ./data/context/manual.md, ./data/context/merchant_category_codes.csv, ./data/context/merchant_data.json, ./data/context/payments-readme.md, ./data/context/payments.csv"
+    submission_file = "submission_default.csv"
 
     # Ensure app_notebooks directory exists
     os.makedirs("./app_notebooks", exist_ok=True)
@@ -168,7 +183,7 @@ def main():
         # Process batch in parallel
         results = []
         with ThreadPoolExecutor(max_workers=args.workers) as executor:
-            futures = {executor.submit(process_task, task, dataset_path): task for task in batch}
+            futures = {executor.submit(process_task, task, dataset_path, args.llm): task for task in batch}
             for future in as_completed(futures):
                 result = future.result()
                 results.append(result)
