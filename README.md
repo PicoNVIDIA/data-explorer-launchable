@@ -24,7 +24,7 @@ The agent is NAT compatible. There are two ways to invoke the agent.
 
 1. From python file, reference code in example.py
     ```bash
-    python example.py
+    uv run python example.py
     ```
 
 2. Use NAT in CLI:
