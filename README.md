@@ -45,3 +45,9 @@ Inside `src/data_explorer_agent/configs/config.yml`, you can customize:
 
 ### Using Your Own Data
 A sample QS University Ranking dataset is provided. To use your own data, tell the agent the path to your dataset in input prompt.
+
+### Run Dabstep Eval
+```bash
+export OPENAI_API_KEY=your_api_key
+uv run python dabstep/DABstep_eval.py --task 1
+```
