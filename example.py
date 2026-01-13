@@ -3,6 +3,7 @@ import asyncio
 from nat.runtime.loader import load_workflow
 from nat.utils.type_utils import StrPath
 from dotenv import load_dotenv
+from data_explorer_agent.utils import print_token_usage
 load_dotenv()
 
 
@@ -18,3 +19,4 @@ if __name__ == "__main__":
                         input_str=user_query))
 
     print("agent response:", result)
+    print_token_usage("./traces.jsonl")
