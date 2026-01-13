@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 from nat.runtime.loader import load_workflow
-from dabstep.download_data import download_dabstep_data
+from download_data import download_dabstep_data
 
 load_dotenv()
 
