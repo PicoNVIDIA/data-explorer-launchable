@@ -5,8 +5,9 @@ A react agent with tools designed for Jupyter notebook manipulation. It can resp
 ## Features
 - **Notebook Manipulation Tools**: Adding/deleting/modifying a Jupyter cell. Automatic notebook execution after each action, and return cell output to the agent.
 - **Automated Data Analysis & Visualization**: Generate comprehensive data analysis notebooks with intelligent insights. Add visual plots if needed to complement the notebook report.
-- **Vision Analysis Feedback**: Uses a vision language models to provide feedback for generated visualizations so that the agent can iteratively improve the quality of plots inside the notebook. 
+- **Vision Analysis Feedback**: Uses a vision language models to provide feedback for generated visualizations so that the agent can iteratively improve the quality of plots inside the notebook.
 - **Automatic Error Fixing**: Automatic notebook debugging and error correction
+- **Bash Tool Support**: Safe bash command execution with read-only commands (ls, find, grep, cat, head, tail, wc, pwd, echo, file, stat, du, df). Destructive commands are blocked for safety.
 
 ## Installation & Setup
 
@@ -40,8 +41,14 @@ Use the `--override` option to override values in config file. e.g. `--override 
 Inside `src/data_explorer_agent/configs/config.yml`, you can customize:
 * LLM model
 * path to the generated notebook path
-* executioni verboseness
+* execution verboseness
 * agent instruction (in additional_instructions field)
+
+### Alternative Agent Configs
+- **bash_tool_call_agent.yml**: A simplified tool calling agent with only bash tools. Useful for file navigation and lookup.
+    ```bash
+    nat run --config_file src/data_explorer_agent/configs/bash_tool_call_agent.yml --input "List all Python files in the current directory"
+    ```
 
 ### Using Your Own Data
 A sample QS University Ranking dataset is provided. To use your own data, tell the agent the path to your dataset in input prompt.
