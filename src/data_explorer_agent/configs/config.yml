@@ -1,3 +1,11 @@
+general:
+  telemetry:
+    tracing:
+      file_trace:
+        _type: file
+        output_path: ./traces.jsonl
+        project: data-explorer-agent
+
 function_groups:
   notebook_function_group:
     _type: notebook_function_group
