@@ -10,12 +10,14 @@ function_groups:
   notebook_function_group:
     _type: notebook_function_group
     notebook_path: "notebooks/example.ipynb"
-    vision_analyzer: 
+    vision_analyzer:
       provider: azure_openai
       model_name: gpt-5-mini-20250807
       api_key: $OPENAI_API_KEY
       api_version: 2025-02-01-preview
       api_base: https://llm-proxy.perflab.nvidia.com
+  bash_function_group:
+    _type: bash_function_group
 
 llms:
   agent_llm:
@@ -30,7 +32,7 @@ workflow:
   _type: react_agent
   llm_name: agent_llm
   verbose: true
-  tool_names: [notebook_function_group]
+  tool_names: [notebook_function_group, bash_function_group]
   max_history: 100  # default only keeps 15 messages in chat_history
   additional_instructions: |
     You are an expert data scientist and Python programmer who creates Jupyter notebooks for data analysis and visualization.
