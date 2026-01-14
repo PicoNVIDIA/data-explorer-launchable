@@ -164,8 +164,6 @@ async def bash_function_group(config: BashFunctionGroupConfig, builder: Builder)
 
         except subprocess.TimeoutExpired:
             return "Error: Command timed out after 30 seconds"
-        except Exception as e:
-            return f"Error: {str(e)}"
 
     group.add_function(name="run_bash", fn=run_bash, description=run_bash.__doc__)
 
