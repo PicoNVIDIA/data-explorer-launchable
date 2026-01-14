@@ -1,4 +1,6 @@
 import logging
+import subprocess
+import shlex
 
 from pydantic import Field
 from nat.builder.workflow_builder import Builder
@@ -99,5 +101,72 @@ async def notebook_function_group(config: NotebookFunctionGroupConfig, builder: 
     group.add_function(name="modify_cell", fn=modify_cell, description=modify_cell.__doc__)
     group.add_function(name="delete_cell", fn=delete_cell, description=delete_cell.__doc__)
     group.add_function(name="get_notebook_summary", fn=get_notebook_summary, description=get_notebook_summary.__doc__)
+
+    yield group
+
+
+class BashFunctionGroupConfig(FunctionGroupBaseConfig, name="bash_function_group"):
+    """
+    NAT function group for simple bash operations.
+    """
+    pass
+
+
+@register_function_group(config_type=BashFunctionGroupConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
+async def bash_function_group(config: BashFunctionGroupConfig, builder: Builder):
+    """
+    Registers a function group for simple bash operations.
+    """
+    group = FunctionGroup(config=config)
+
+    ALLOWED_COMMANDS = {"ls", "find", "grep", "cat", "head", "tail", "wc", "pwd", "echo", "file", "stat", "du", "df"}
+    BLOCKED_COMMANDS = {"rm", "rmdir", "mv", "cp", "chmod", "chown", "sudo", "su", "dd", "mkfs", "fdisk", "kill", "pkill", "shutdown", "reboot"}
+
+    async def run_bash(command: str) -> str:
+        """
+        Run a simple bash command. Only read-only commands like ls, find, grep, cat, head, tail, wc, pwd, echo, file, stat, du, df are allowed.
+        Destructive commands like rm, mv, cp, chmod, sudo are blocked.
+        """
+        try:
+            # Parse the command to get the base command
+            parts = shlex.split(command)
+            if not parts:
+                return "Error: Empty command"
+
+            base_cmd = parts[0]
+
+            # Check if command is blocked
+            if base_cmd in BLOCKED_COMMANDS:
+                return f"Error: Command '{base_cmd}' is not allowed for safety reasons."
+
+            # Check if command is in the allowed list
+            if base_cmd not in ALLOWED_COMMANDS:
+                return f"Error: Command '{base_cmd}' is not in the allowed list. Allowed commands: {', '.join(sorted(ALLOWED_COMMANDS))}"
+
+            # Run the command
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            output = ""
+            if result.stdout:
+                output += result.stdout
+            if result.stderr:
+                output += f"\nStderr: {result.stderr}"
+            if result.returncode != 0:
+                output += f"\nReturn code: {result.returncode}"
+
+            return output.strip() if output.strip() else "(No output)"
+
+        except subprocess.TimeoutExpired:
+            return "Error: Command timed out after 30 seconds"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    group.add_function(name="run_bash", fn=run_bash, description=run_bash.__doc__)
 
     yield group
