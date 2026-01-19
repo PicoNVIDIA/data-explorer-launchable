@@ -1,11 +1,11 @@
 import json
-def load_question(jsonl_path: str, index: int = 0) -> dict:
-    """Load a specific question from a JSONL file."""
-    with open(jsonl_path, 'r') as f:
-        for i, line in enumerate(f):
-            if i == index:
-                return json.loads(line)
-    raise IndexError(f"Question at index {index} not found")
+def load_question(json_path: str, index: int = 0) -> dict:
+    """Load a specific question from a JSON file."""
+    with open(json_path, 'r') as f:
+        questions = json.load(f)
+    if index < 0 or index >= len(questions):
+        raise IndexError(f"Question at index {index} not found")
+    return questions[index]
 
 
 def solve_question(agent, question_data: dict, data_dir: str = "data") -> str:
@@ -63,7 +63,7 @@ INSTRUCTIONS:
 
 def solver(agent, question_id):
     data_dir = "data/context"
-    dev_jsonl = "dev.jsonl"
+    dev_jsonl = "data/tasks_dev.json"
     
     # Load the first question
     question = load_question(dev_jsonl, index=question_id)
