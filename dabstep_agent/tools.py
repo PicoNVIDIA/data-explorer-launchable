@@ -166,6 +166,10 @@ def execute_python_code(code: str, use_gpu: bool = True, verbose: bool = True) -
         stdout_output = stdout_capture.getvalue()
         stderr_output = stderr_capture.getvalue()
 
+        # If no output but code contains imports, provide feedback
+        if not stdout_output.strip() and 'import ' in code:
+            stdout_output = "Libraries imported successfully.\n"
+
         # Print the output so user can see it (only if verbose)
         if verbose:
             if stdout_output:
@@ -228,6 +232,18 @@ def execute_bash_command(command: str, timeout: int = 60, verbose: bool = True, 
 
         stdout_output = result.stdout
         stderr_output = result.stderr
+
+        # Deduplicate output lines while preserving order
+        if stdout_output:
+            seen = set()
+            unique_lines = []
+            for line in stdout_output.splitlines():
+                if line not in seen:
+                    seen.add(line)
+                    unique_lines.append(line)
+            stdout_output = '\n'.join(unique_lines)
+            if unique_lines:
+                stdout_output += '\n'  # Preserve trailing newline
 
         # Check if output is too large
         max_output_bytes = max_output_kb * 1024
