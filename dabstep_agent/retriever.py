@@ -13,7 +13,7 @@ load_dotenv()
 DEFAULT_API_KEY = os.environ.get("NVIDIA_API_KEY")
 DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
 DEFAULT_MODEL = "nvidia/nv-embedqa-e5-v5"
-DEFAULT_TOP_K = 5
+DEFAULT_TOP_K = 1
 
 
 def get_embeddings(texts: list, input_type: str, api_key: str = DEFAULT_API_KEY,
@@ -208,7 +208,7 @@ search_doc_tool = {
                 },
                 "top_k": {
                     "type": "integer",
-                    "description": "Number of top results to return (default: 5)",
+                    "description": "Number of top results to return (default: 1)",
                     "default": 1
                 }
             },

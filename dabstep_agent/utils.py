@@ -81,3 +81,5 @@ def solver(agent, question_id):
     print(f"Agent's Answer: {answer}")
     print(f"Expected Answer: {question.get('answer', 'N/A')}")
     print("=" * 70)
+
+    return answer
