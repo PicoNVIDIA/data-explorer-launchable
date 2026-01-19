@@ -33,18 +33,17 @@ Available data files in '{data_dir}/':
 
 IMPORTANT DOCUMENTATION:
 - manual.md: Contains detailed definitions of terms, concepts, column descriptions, and business rules.
-Some of these terms have different definition than common sense.
-  If you need to understand a term, use the execute_bash_command
-  tool to search manual.md. For example:
-  - `grep -i "term_name" {data_dir}/manual.md` to find definition of a term
-  - `grep -A 5 "term_name" {data_dir}/manual.md` to get context around a term
+  Some of these terms have different definition than common sense.
+  If you need to understand a term, use the search_doc tool:
+  - search_doc(term="term_name", file_path="{data_dir}/manual.md")
+  The tool will automatically search and return the most relevant passages.
 
 QUESTION: {question_data['question']}
 
 GUIDELINES: {question_data['guidelines']}
 
 INSTRUCTIONS:
-1. First, identify the terms in the question, use execute_bash_command to search manual.md
+1. First, identify the terms in the question, use search_doc to look up their definitions in manual.md
 2. Then use execute_python_code to load and analyze the relevant data files
 3. Provide the final answer following the guidelines exactly
 """
