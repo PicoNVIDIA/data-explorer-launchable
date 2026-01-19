@@ -42,7 +42,8 @@ class DataScienceAgent:
         verbose: bool = True,
         force_final_response_after_success: bool = False,
         stream: bool = False,
-        skip_final_response: bool = False
+        skip_final_response: bool = False,
+        tools: Optional[List[Dict[str, Any]]] = None
     ):
         """
         Initialize the DataScienceAgent.
@@ -69,6 +70,9 @@ class DataScienceAgent:
                 still retry on failed executions regardless of this setting. Only skips the
                 final response after a successful execution. Useful for faster responses when
                 you only need the raw execution results.
+            tools: Optional list of tool definitions to make available to the agent.
+                If None, all tools from ALL_TOOLS are used. Pass a subset to restrict
+                which tools the agent can call.
         """
         # Configuration
         self.base_url = base_url
@@ -81,6 +85,7 @@ class DataScienceAgent:
         self.skip_final_response = skip_final_response
         self.force_final_response_after_success = force_final_response_after_success
         self.awaiting_final_response = False
+        self.tools = tools if tools is not None else ALL_TOOLS
 
         # Get API key (allow override for local servers)
         self.api_key = api_key or os.environ.get("NGC_API_KEY") or "not-needed"
@@ -120,7 +125,7 @@ class DataScienceAgent:
             print("DataScienceAgent initialized")
             print(f"  Base URL: {self.base_url}")
             print(f"  Model: {self.model}")
-            print(f"  Available tools: {[tool['function']['name'] for tool in ALL_TOOLS]}")
+            print(f"  Available tools: {[tool['function']['name'] for tool in self.tools]}")
             print()
 
     def _process_streaming_response(self, stream_response):
@@ -319,7 +324,7 @@ class DataScienceAgent:
                 if self.verbose:
                     print("  âš™ï¸  Requesting final response without tool access")
             else:
-                request_kwargs["tools"] = ALL_TOOLS
+                request_kwargs["tools"] = self.tools
 
             response = self.client.chat.completions.create(**request_kwargs)
 
@@ -444,17 +449,17 @@ class DataScienceAgent:
                                     print(f"    DataFrames removed: {', '.join(changes['removed'])}")
 
                         # Exit immediately if successful execution without print output
-                        if result.get("success"):
-                            if self.force_final_response_after_success:
-                                self.awaiting_final_response = True
+                        # if result.get("success"):
+                        #     if self.force_final_response_after_success:
+                        #         self.awaiting_final_response = True
 
-                            stdout = result.get("stdout", "")
-                            output = result.get("output", "")
-                            if not stdout and not output:
-                                if self.verbose:
-                                    print("No output from execution, exiting")
-                                self.awaiting_final_response = False
-                                return ""
+                        #     stdout = result.get("stdout", "")
+                        #     output = result.get("output", "")
+                        #     if not stdout and not output:
+                        #         if self.verbose:
+                        #             print("No output from execution, exiting")
+                        #         self.awaiting_final_response = False
+                        #         return ""
 
                     if self.verbose and tool_name not in ["execute_python_code"]:
                         print(f"    Result: {truncate_output(result)}")
