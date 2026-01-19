@@ -10,6 +10,8 @@ import time
 import subprocess
 import shlex
 
+from retriever import search_doc, search_doc_tool
+
 
 # =============================================================================
 # PERSISTENT EXECUTION ENVIRONMENT
@@ -389,6 +391,7 @@ TOOL_FUNCTIONS = {
     "execute_python_code": execute_python_code,
     "execute_bash_command": execute_bash_command,
     "reset_execution_environment": reset_execution_environment,
+    "search_doc": search_doc,
 }
 
 # List of all tool definitions
@@ -396,6 +399,7 @@ ALL_TOOLS = [
     #get_csv_headers_tool,
     execute_python_code_tool,
     execute_bash_command_tool,
+    search_doc_tool,
 ]
 
 

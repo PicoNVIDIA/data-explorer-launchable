@@ -17,3 +17,6 @@ agent = DataScienceAgent(base_url = "https://integrate.api.nvidia.com/v1",
 agent.reset_conversation()
 #res = agent.process_prompt('find prime numbers within 200')
 solver(agent, 1)
+
+# Test the search_doc tool
+#res = agent.process_prompt(f"what is the definition of fraud? in data/context/manual.md")
