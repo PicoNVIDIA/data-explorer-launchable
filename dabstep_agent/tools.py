@@ -68,30 +68,47 @@ _initialize_namespace()
 # TOOL FUNCTIONS
 # =============================================================================
 
-def get_csv_headers(file_path: str) -> dict:
+def get_file_header(file_path: str, num_lines: int = 10, verbose: bool = True) -> dict:
     """
-    Get the column headers from a CSV file.
+    Get the first N lines of a file (like the 'head' command).
 
     Args:
-        file_path: Path to the CSV file
+        file_path: Path to the file
+        num_lines: Number of lines to return (default: 10)
+        verbose: If True, print the output. Default True.
 
     Returns:
-        Dictionary with columns list and count
+        Dictionary with file header content
     """
+    if verbose:
+        print(f"\n[Reading first {num_lines} lines of {file_path}]")
+        print("-" * 60)
+
     try:
-        import pandas as pd
-        df_header = pd.read_csv(file_path, nrows=0)
-        columns_list = df_header.columns.tolist()
+        lines = []
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            for i, line in enumerate(f):
+                if i >= num_lines:
+                    break
+                lines.append(line.rstrip('\n\r'))
+
+        content = '\n'.join(lines)
+
+        if verbose:
+            print(content)
+            print("-" * 60)
+
         return {
             "success": True,
             "file_path": file_path,
-            "columns": columns_list,
-            "column_count": len(columns_list)
+            "num_lines": len(lines),
+            "content": content
         }
     except Exception as e:
         return {
             "success": False,
-            "error": str(e)
+            "error": str(e),
+            "error_type": type(e).__name__
         }
 
 
@@ -175,7 +192,7 @@ def execute_python_code(code: str, use_gpu: bool = True, verbose: bool = True) -
         }
 
 
-def execute_bash_command(command: str, timeout: int = 60, verbose: bool = True) -> dict:
+def execute_bash_command(command: str, timeout: int = 60, verbose: bool = True, max_output_kb: int = 50) -> dict:
     """
     Execute a bash command and return the output.
 
@@ -183,6 +200,7 @@ def execute_bash_command(command: str, timeout: int = 60, verbose: bool = True) 
         command: The bash command to execute (e.g., "find . -name '*.py'", "grep -r 'pattern' .")
         timeout: Maximum execution time in seconds (default: 60)
         verbose: If True, print execution details and output. Default True.
+        max_output_kb: Maximum output size in KB before failing (default: 50KB)
 
     Returns:
         Dictionary with command output, return code, and any errors
@@ -210,6 +228,20 @@ def execute_bash_command(command: str, timeout: int = 60, verbose: bool = True) 
 
         stdout_output = result.stdout
         stderr_output = result.stderr
+
+        # Check if output is too large
+        max_output_bytes = max_output_kb * 1024
+        output_size = len(stdout_output.encode('utf-8')) if stdout_output else 0
+
+        if output_size > max_output_bytes:
+            if verbose:
+                print(f"[OUTPUT TOO LARGE: {output_size // 1024}KB > {max_output_kb}KB limit]")
+            return {
+                "success": False,
+                "error": f"Output too large ({output_size // 1024}KB exceeds {max_output_kb}KB limit). Use Python with pandas/json to filter data instead of bash commands on large files.",
+                "error_type": "OutputTooLarge",
+                "output_size_kb": output_size // 1024
+            }
 
         # Print the output so user can see it (only if verbose)
         if verbose:
@@ -316,17 +348,22 @@ def _compute_dataframe_changes(before: dict, after: dict) -> dict:
 # TOOL DEFINITIONS FOR OPENAI API
 # =============================================================================
 
-get_csv_headers_tool = {
+get_file_header_tool = {
     "type": "function",
     "function": {
-        "name": "get_csv_headers",
-        "description": "Get the column headers from a CSV file. Use this to understand what columns are available in the CSV before writing pandas code.",
+        "name": "get_file_header",
+        "description": "Get the first N lines of a file (like the 'head' command). Use this to preview the content and structure of any text file, including CSV, JSON, log files, etc.",
         "parameters": {
             "type": "object",
             "properties": {
                 "file_path": {
                     "type": "string",
-                    "description": "The path to the CSV file"
+                    "description": "The path to the file"
+                },
+                "num_lines": {
+                    "type": "integer",
+                    "description": "Number of lines to return (default: 10)",
+                    "default": 10
                 }
             },
             "required": ["file_path"]
@@ -387,7 +424,7 @@ execute_bash_command_tool = {
 
 # Map of tool names to functions
 TOOL_FUNCTIONS = {
-    "get_csv_headers": get_csv_headers,
+    "get_file_header": get_file_header,
     "execute_python_code": execute_python_code,
     "execute_bash_command": execute_bash_command,
     "reset_execution_environment": reset_execution_environment,
@@ -396,7 +433,7 @@ TOOL_FUNCTIONS = {
 
 # List of all tool definitions
 ALL_TOOLS = [
-    #get_csv_headers_tool,
+    get_file_header_tool,
     execute_python_code_tool,
     execute_bash_command_tool,
     search_doc_tool,
