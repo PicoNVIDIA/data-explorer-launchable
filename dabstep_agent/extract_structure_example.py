@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 """
-Example script: Extract structure from CSV and JSON files using DataScienceAgent.
+Extract structure from CSV and JSON files using DataScienceAgent.
 
-This script demonstrates using the agent with only the Python execution tool
-to extract file structures in a standardized JSON format.
+This module provides functions to extract file structures in a standardized JSON format.
+Can be used as a library or run as a standalone script.
 """
 
 import os
 import json
+from typing import Dict, Optional
 from dotenv import load_dotenv
 from agent import DataScienceAgent
 from tools import execute_python_code_tool
 
 load_dotenv()
-
-# Data directory
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "context")
 
 
 def extract_file_structure(agent: DataScienceAgent, file_path: str) -> dict:
@@ -82,10 +80,80 @@ Print ONLY the JSON output, nothing else.
         return {"error": f"Failed to parse JSON: {e}", "raw": result}
 
 
-def main():
-    # Initialize agent with only the Python execution tool
+def extract_all_structures(agent: DataScienceAgent, data_dir: str) -> Dict[str, dict]:
+    """
+    Extract structures from all CSV and JSON files in a directory.
+
+    Args:
+        agent: The DataScienceAgent instance
+        data_dir: Path to the directory containing data files
+
+    Returns:
+        Dictionary mapping filenames to their structure dictionaries
+    """
+    output_path = os.path.join(data_dir, "file_structures.json")
+
+    # If cached file exists, load and return it
+    if os.path.exists(output_path):
+        with open(output_path, 'r') as f:
+            return json.load(f)
+
+    results = {}
+
+    for filename in os.listdir(data_dir):
+        if filename.endswith(('.csv', '.json')):
+            file_path = os.path.join(data_dir, filename)
+            structure = extract_file_structure(agent, file_path)
+            results[filename] = structure
+            agent.reset_conversation()
+
+    # Save results to cache file
+    with open(output_path, 'w') as f:
+        json.dump(results, f, indent=2, default=str)
+
+    return results
+
+
+def format_structures_for_prompt(structures: Dict[str, dict]) -> str:
+    """
+    Format extracted structures as a string for injection into prompts.
+
+    Args:
+        structures: Dictionary mapping filenames to structure dictionaries
+
+    Returns:
+        Formatted string describing all file structures
+    """
+    lines = []
+
+    for filename, structure in structures.items():
+        if "error" in structure:
+            lines.append(f"- {filename}: (error extracting structure)")
+            continue
+
+        file_type = structure.get("file_type", "unknown")
+
+        if file_type == "csv":
+            columns = structure.get("columns", [])
+            sample = structure.get("sample_row", {})
+            lines.append(f"- {filename} (CSV):")
+            lines.append(f"    Columns: {', '.join(columns)}")
+            lines.append(f"    Sample row: {json.dumps(sample, default=str)}")
+        elif file_type == "json":
+            keys = structure.get("keys", [])
+            structure_type = structure.get("structure_type", "unknown")
+            sample = structure.get("sample_record", {})
+            lines.append(f"- {filename} (JSON, {structure_type}):")
+            lines.append(f"    Keys: {', '.join(keys)}")
+            lines.append(f"    Sample record: {json.dumps(sample, default=str)}")
+
+    return "\n".join(lines)
+
+
+def create_structure_extraction_agent() -> DataScienceAgent:
+    """Create a DataScienceAgent configured for structure extraction."""
     api_key = os.environ.get("NVIDIA_API_KEY")
-    agent = DataScienceAgent(
+    return DataScienceAgent(
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=api_key,
         model="nvidia/nemotron-3-nano-30b-a3b",
@@ -96,40 +164,34 @@ def main():
         max_iterations=5
     )
 
-    # Find all CSV and JSON files in the data directory
-    files_to_process = []
-    for filename in os.listdir(DATA_DIR):
-        if filename.endswith(('.csv', '.json')):
-            files_to_process.append(os.path.join(DATA_DIR, filename))
 
-    print(f"Found {len(files_to_process)} files to process:")
-    for f in files_to_process:
-        print(f"  - {os.path.basename(f)}")
-    print()
+def main():
+    # Data directory
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data", "context")
 
-    # Extract structure from each file
-    results = {}
-    for file_path in files_to_process:
-        print(f"\n{'='*70}")
-        print(f"Processing: {os.path.basename(file_path)}")
-        print('='*70)
+    # Initialize agent
+    agent = create_structure_extraction_agent()
 
-        structure = extract_file_structure(agent, file_path)
-        results[os.path.basename(file_path)] = structure
+    # Extract all structures
+    print(f"Extracting structures from: {data_dir}")
+    structures = extract_all_structures(agent, data_dir)
 
-        # Reset conversation for next file (but keep execution environment)
-        agent.reset_conversation()
-
-    # Print final results
+    # Print formatted output
     print("\n" + "="*70)
-    print("EXTRACTED STRUCTURES")
+    print("EXTRACTED STRUCTURES (formatted for prompt)")
     print("="*70)
-    print(json.dumps(results, indent=2, default=str))
+    print(format_structures_for_prompt(structures))
 
-    # Optionally save to file
-    output_path = os.path.join(DATA_DIR, "file_structures.json")
+    # Print raw JSON
+    print("\n" + "="*70)
+    print("EXTRACTED STRUCTURES (raw JSON)")
+    print("="*70)
+    print(json.dumps(structures, indent=2, default=str))
+
+    # Save to file
+    output_path = os.path.join(data_dir, "file_structures.json")
     with open(output_path, 'w') as f:
-        json.dump(results, indent=2, fp=f, default=str)
+        json.dump(structures, indent=2, fp=f, default=str)
     print(f"\nResults saved to: {output_path}")
 
 

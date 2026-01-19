@@ -4,9 +4,30 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from agent import DataScienceAgent
 from utils import solver, load_question
+from tools import execute_python_code_tool, search_doc_tool
+from extract_structure_example import (
+    create_structure_extraction_agent,
+    extract_all_structures,
+    format_structures_for_prompt
+)
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Global variable to hold pre-extracted file structures
+_FILE_STRUCTURES = None
+
+
+def extract_file_structures_once(data_dir: str = "data/context") -> str:
+    """Extract file structures once and cache them."""
+    global _FILE_STRUCTURES
+    if _FILE_STRUCTURES is None:
+        print("Pre-extracting file structures...")
+        structure_agent = create_structure_extraction_agent()
+        structures = extract_all_structures(structure_agent, data_dir)
+        _FILE_STRUCTURES = format_structures_for_prompt(structures)
+        print("File structures extracted and cached.\n")
+    return _FILE_STRUCTURES
 
 
 def create_agent():
@@ -19,20 +40,21 @@ def create_agent():
         model="nvidia/nemotron-3-nano-30b-a3b",
         verbose=True,
         stream=True,
-        skip_final_response=False
+        skip_final_response=False,
+        tools=[execute_python_code_tool, search_doc_tool]
     )
     agent.reset_conversation()
     return agent
 
 
-def solve_single_task(task_id: int) -> dict:
+def solve_single_task(task_id: int, file_structures: str = None) -> dict:
     """Solve a single task and return the result."""
     try:
         agent = create_agent()
         dev_jsonl = "data/tasks_dev.json"
         question = load_question(dev_jsonl, index=task_id)
 
-        answer = solver(agent, task_id)
+        answer = solver(agent, task_id, file_structures=file_structures)
 
         return {
             "task_id": question.get("task_id", task_id),
@@ -60,6 +82,9 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
         max_workers: Number of parallel workers
         output_file: Output file path (default: results_<timestamp>.json)
     """
+    # Pre-extract file structures once before parallel execution
+    file_structures = extract_file_structures_once()
+
     # Load all questions to get the count
     dev_jsonl = "data/tasks_dev.json"
     with open(dev_jsonl, 'r') as f:
@@ -77,9 +102,9 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
     completed = 0
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
+        # Submit all tasks with pre-extracted structures
         future_to_task = {
-            executor.submit(solve_single_task, task_id): task_id
+            executor.submit(solve_single_task, task_id, file_structures): task_id
             for task_id in range(num_tasks)
         }
 
@@ -132,8 +157,10 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
 
 def solve_single(task_id: int):
     """Solve a single task (original behavior)."""
+    # Pre-extract file structures
+    file_structures = extract_file_structures_once()
     agent = create_agent()
-    solver(agent, task_id)
+    solver(agent, task_id, file_structures=file_structures)
 
 
 if __name__ == "__main__":
