@@ -16,4 +16,4 @@ agent = DataScienceAgent(base_url = "https://integrate.api.nvidia.com/v1",
 
 agent.reset_conversation()
 #res = agent.process_prompt('find prime numbers within 200')
-solver(0)
+solver(agent, 1)
