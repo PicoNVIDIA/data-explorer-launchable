@@ -104,25 +104,33 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
     term_lower = term.lower()
 
     for chunk in raw_chunks:
-        lines = [line.strip() for line in chunk.strip().split("\n") if line.strip()]
-        if not lines:
+        # Keep all lines (including empty ones) to preserve paragraph structure
+        lines = [line.strip() for line in chunk.strip().split("\n")]
+        if not lines or all(not line for line in lines):
             continue
 
         # Find lines that actually contain the search term
         term_line_indices = [i for i, line in enumerate(lines) if term_lower in line.lower()]
 
         if term_line_indices:
-            # Create a small passage around each line containing the term (1 line context each side)
+            # Create a small passage around each line containing the term
+            # But stop at empty lines (paragraph boundaries)
             for idx in term_line_indices:
-                start = max(0, idx - 1)
-                end = min(len(lines), idx + 2)
-                passage = " ".join(lines[start:end])
+                # Find paragraph boundaries (empty lines) around the match
+                start = idx
+                while start > 0 and lines[start - 1]:
+                    start -= 1
+                end = idx + 1
+                while end < len(lines) and lines[end]:
+                    end += 1
+                # Join non-empty lines in this paragraph
+                passage = " ".join(line for line in lines[start:end] if line)
                 if passage and passage not in seen:
                     passages.append(passage)
                     seen.add(passage)
         else:
-            # Fallback: if somehow no term found, use the whole chunk
-            passage = " ".join(lines)
+            # Fallback: if somehow no term found, use the whole chunk (non-empty lines only)
+            passage = " ".join(line for line in lines if line)
             if passage and passage not in seen:
                 passages.append(passage)
                 seen.add(passage)
@@ -157,17 +165,15 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
 
         # Format results
         results = []
-        for i, idx in enumerate(top_indices):
-            results.append({
-                "rank": i + 1,
-                "score": float(scores[idx]),
-                "passage": passages[idx]
-            })
-
-        # Create formatted string for display
         formatted_results = []
-        for r in results:
-            formatted_results.append(f"{r['rank']}. (score: {r['score']:.4f}) {r['passage']}")
+        for i, idx in enumerate(top_indices):
+            rank = i + 1
+            score = float(scores[idx])
+            passage = passages[idx]
+            results.append({
+                "passage": passage
+            })
+            formatted_results.append(f"{rank}. (score: {score:.4f}) {passage}")
 
         output = "\n".join(formatted_results)
 
@@ -177,7 +183,7 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
         return {
             "success": True,
             "results": results,
-            "formatted_output": output,
+            #"formatted_output": output,
             "message": f"Found top {len(results)} relevant passages for '{term}'"
         }
 
@@ -232,11 +238,4 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Result:")
     print("=" * 60)
-    if result["success"]:
-        print(f"Success: {result['message']}")
-        print(f"\nTop passages:")
-        for r in result["results"]:
-            print(f"  {r['rank']}. (score: {r['score']:.4f})")
-            print(f"     {r['passage'][:100]}...")
-    else:
-        print(f"Error: {result['error']}")
+    print(result)
