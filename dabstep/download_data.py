@@ -8,7 +8,7 @@ from huggingface_hub import snapshot_download
 DATA_DIR = "./data"
 REPO_ID = "adyen/DABstep"
 CONTEXT_PATTERN = "data/context/*"
-TASKS_FILE = "tasks.json"
+TASKS_SPLITS = {"default": "tasks.json", "dev": "tasks_dev.json"}
 
 
 def download_dabstep_data(data_dir: str = DATA_DIR) -> None:
@@ -27,9 +27,13 @@ def download_dabstep_data(data_dir: str = DATA_DIR) -> None:
     ]
 
     context_exists = all((data_path / f).exists() for f in expected_files)
-    tasks_exist = (data_path / TASKS_FILE).exists()
+    missing_tasks = [
+        (split, filename)
+        for split, filename in TASKS_SPLITS.items()
+        if not (data_path / filename).exists()
+    ]
 
-    if context_exists and tasks_exist:
+    if context_exists and not missing_tasks:
         print(f"DABstep data already exists in {data_dir}")
         return
 
@@ -45,14 +49,14 @@ def download_dabstep_data(data_dir: str = DATA_DIR) -> None:
         print("Context download complete.")
 
     # Download and save tasks if needed
-    if not tasks_exist:
-        print(f"Downloading DABstep tasks to {data_dir}/{TASKS_FILE}...")
+    for split, filename in missing_tasks:
+        print(f"Downloading DABstep tasks ({split}) to {data_dir}/{filename}...")
         data_path.mkdir(parents=True, exist_ok=True)
-        ds = load_dataset(REPO_ID, "tasks", split="default")
+        ds = load_dataset(REPO_ID, "tasks", split=split)
         tasks = [dict(row) for row in ds]
-        with open(data_path / TASKS_FILE, "w", encoding="utf-8") as f:
+        with open(data_path / filename, "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2, ensure_ascii=False)
-        print("Tasks download complete.")
+        print(f"Tasks ({split}) download complete.")
 
 
 if __name__ == "__main__":
