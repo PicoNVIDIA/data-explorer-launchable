@@ -23,6 +23,7 @@ After searching, provide a VERY BRIEF summary (max 50 words, just use bullet poi
 SOLVER_SYSTEM_PROMPT = """/no_think You are a data science expert.
 Write complete, executable Python code to answer the question.
 IMPORTANT: Do NOT assume variables exist. Always import libraries and load data files.
+Use pandas to explore tabular data.
 Use print() to show results. Preserve exact case of data values."""
 
 

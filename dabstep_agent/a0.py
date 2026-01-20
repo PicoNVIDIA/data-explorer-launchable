@@ -56,7 +56,7 @@ GUIDELINES: {question_data['guidelines']}
 INSTRUCTIONS:
 1. First, identify the terms in the question, use search_doc to look up their definitions in manual.md
 2. Then use execute_python_code to load and analyze the relevant data files
-3. Provide the final answer following the guidelines exactly
+3. Provide the final answer following the guidelines exactly. If 
 """
 
     print("=" * 70)
