@@ -44,7 +44,8 @@ class DataScienceAgent:
         stream: bool = False,
         skip_final_response: bool = False,
         tools: Optional[List[Dict[str, Any]]] = None,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        final_prompt: Optional[str] = None
     ):
         """
         Initialize the DataScienceAgent.
@@ -76,6 +77,8 @@ class DataScienceAgent:
                 which tools the agent can call.
             system_prompt: Optional custom system prompt. If None, uses the default
                 data science focused prompt.
+            final_prompt: Optional custom prompt for requesting final summary. If None,
+                uses the default prompt asking for a summary of what was accomplished.
         """
         # Configuration
         self.base_url = base_url
@@ -110,6 +113,9 @@ class DataScienceAgent:
         "Now answer user's request:\n"
         self.sys_prompt = system_prompt if system_prompt else default_sys_prompt
         self.user_prompt = ""
+
+        default_final_prompt = "Please provide a final response summarizing what was accomplished based on the conversation history. Do not make any tool calls."
+        self.final_prompt = final_prompt if final_prompt else default_final_prompt
 
         # Conversation state
         self.messages: List[Dict[str, Any]] = [
@@ -268,7 +274,7 @@ class DataScienceAgent:
         # Add a user message asking for final response
         self.messages.append({
             "role": "user",
-            "content": "Please provide a final response summarizing what was accomplished based on the conversation history. Do not make any tool calls."
+            "content": self.final_prompt
         })
 
         # Filter out failed tool results to avoid confusing the LLM
@@ -584,6 +590,9 @@ class DataScienceAgent:
                     final_content = ""
 
                 # If response is empty, request a summary from the LLM
+                if not final_content.strip():
+                    #print(assistant_message.content)
+                    continue
                 if not final_content.strip() and not self.skip_final_response:
                     return self._request_final_summary("LLM returned empty response")
 
