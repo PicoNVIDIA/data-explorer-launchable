@@ -277,16 +277,29 @@ class DataScienceAgent:
             "content": self.final_prompt
         })
 
-        # Filter out failed tool results to avoid confusing the LLM
-        filtered_messages = []
+        # Filter out failed tool results and their corresponding assistant messages
+        # First, identify tool_call_ids that failed
+        failed_tool_call_ids = set()
         for msg in self.messages:
             if msg.get("role") == "tool":
                 try:
                     content = json.loads(msg.get("content", "{}"))
                     if content.get("success") == False:
-                        continue  # Skip failed tool results
+                        failed_tool_call_ids.add(msg.get("tool_call_id"))
                 except (json.JSONDecodeError, TypeError):
-                    pass  # Keep message if we can't parse it
+                    pass
+
+        # Now filter out failed tool results and assistant messages that called them
+        filtered_messages = []
+        for msg in self.messages:
+            if msg.get("role") == "tool":
+                if msg.get("tool_call_id") in failed_tool_call_ids:
+                    continue  # Skip failed tool results
+            elif msg.get("role") == "assistant" and msg.get("tool_calls"):
+                # Check if all tool calls in this message failed
+                tool_call_ids = {tc.get("id") for tc in msg.get("tool_calls", [])}
+                if tool_call_ids and tool_call_ids.issubset(failed_tool_call_ids):
+                    continue  # Skip assistant message if all its tool calls failed
             filtered_messages.append(msg)
 
         # Call LLM without tools to force a text response
