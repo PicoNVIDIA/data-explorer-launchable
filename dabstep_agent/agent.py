@@ -271,10 +271,22 @@ class DataScienceAgent:
             "content": "Please provide a final response summarizing what was accomplished based on the conversation history. Do not make any tool calls."
         })
 
+        # Filter out failed tool results to avoid confusing the LLM
+        filtered_messages = []
+        for msg in self.messages:
+            if msg.get("role") == "tool":
+                try:
+                    content = json.loads(msg.get("content", "{}"))
+                    if content.get("success") == False:
+                        continue  # Skip failed tool results
+                except (json.JSONDecodeError, TypeError):
+                    pass  # Keep message if we can't parse it
+            filtered_messages.append(msg)
+
         # Call LLM without tools to force a text response
         response = self.client.chat.completions.create(
             model=self.model,
-            messages=self.messages,
+            messages=filtered_messages,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             stream=self.stream
