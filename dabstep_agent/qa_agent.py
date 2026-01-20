@@ -1,9 +1,10 @@
 """
 QAAgent: A class-based agent for solving data analysis benchmark questions.
 
-This agent uses a two-phase approach:
+This agent uses a three-phase approach:
 1. Research phase: Search documentation for relevant term definitions
-2. Solver phase: Execute Python code to analyze data and answer the question
+2. Explore phase: Explore data files to find relevant files and columns
+3. Solver phase: Execute Python code to analyze data and answer the question
 
 Example usage:
     agent = QAAgent(data_dir="data/context", tasks_file="data/tasks_dev.json")
@@ -15,7 +16,8 @@ Example usage:
 import glob
 import json
 import os
-from typing import Optional, Dict, List, Any
+import re
+from typing import Optional, Dict, List, Any, Tuple
 from agent import DataScienceAgent
 from tools import execute_python_code_tool, search_doc_tool, reset_execution_environment
 
@@ -26,12 +28,34 @@ class QAAgent:
     code execution to solve data analysis benchmark questions.
     """
 
-    RESEARCH_SYSTEM_PROMPT = """/no_think You are a documentation researcher. Your task is to search for domain-specific term definitions.
+    RESEARCH_SYSTEM_PROMPT = """You are a documentation researcher. Your task is to search for domain-specific term definitions.
 Use search_doc(term="term", file_path="path") to look up terms.
 Search for 1-3 key terms that may have special definitions. Do NOT search common words.
-After searching, provide a VERY BRIEF summary (max 50 words, just use bullet points, no intro, no headers, no conclusions)."""
+After searching, provide a VERY BRIEF summary (max 50 words, just use bullet points, no intro, no headers, no conclusions).
 
-    SOLVER_SYSTEM_PROMPT = """/no_think You are a data science expert.
+Output Format:
+- term1: definitions found
+- term2: definitions found
+"""
+
+    EXPLORE_SYSTEM_PROMPT = """You are a data exploration expert.
+Your task is to explore data files and identify which files and columns are relevant to answer a question.
+
+IMPORTANT: Your goal is NOT to solve the question. Your goal is ONLY to:
+1. Explore and understand the available data files (csv, json, jsonl)
+2. Identify which file(s) are relevant to the question
+3. Identify which column(s) in those files are relevant
+
+Use execute_python_code to explore the files and their structure.
+
+After exploration, provide a FINAL Python code snippet in a ```python block that demonstrates:
+- How to import pandas
+- How to use pandas to read the relevant file(s)
+- How to select/print the relevant columns using pandas
+
+DO NOT solve the question. Just show how to access the relevant data with pandas."""
+
+    SOLVER_SYSTEM_PROMPT = """You are a data science expert.
 Write complete, executable Python code to answer the question.
 IMPORTANT: Do NOT assume variables exist. Always import libraries and load data files.
 Use pandas to explore tabular data.
@@ -44,10 +68,11 @@ Use print() to show results. Preserve exact case of data values."""
         api_key: Optional[str] = None,
         base_url: str = "https://integrate.api.nvidia.com/v1",
         model: str = "nvidia/nemotron-3-nano-30b-a3b",
-        research_max_iterations: int = 5,
+        research_max_iterations: int = 10,
+        explore_max_iterations: int = 100,
         solver_max_iterations: int = 100,
         verbose: bool = True,
-        stream: bool = True,
+        stream: bool = False,
         file_structures: Optional[str] = None,
     ):
         """
@@ -60,6 +85,7 @@ Use print() to show results. Preserve exact case of data values."""
             base_url: Base URL for the LLM API endpoint
             model: The model to use for both research and solver agents
             research_max_iterations: Max iterations for the research agent
+            explore_max_iterations: Max iterations for the explore agent
             solver_max_iterations: Max iterations for the solver agent
             verbose: Whether to print detailed execution logs
             stream: Whether to stream LLM outputs
@@ -71,6 +97,7 @@ Use print() to show results. Preserve exact case of data values."""
         self.base_url = base_url
         self.model = model
         self.research_max_iterations = research_max_iterations
+        self.explore_max_iterations = explore_max_iterations
         self.solver_max_iterations = solver_max_iterations
         self.verbose = verbose
         self.stream = stream
@@ -125,6 +152,29 @@ Use print() to show results. Preserve exact case of data values."""
         agent.reset_conversation()
         return agent
 
+    EXPLORE_FINAL_PROMPT = """Please provide a final response summarizing what was accomplished based on the conversation history. Format:
+Provide a FINAL Python code snippet in a ```python block that demonstrates:
+- How to import pandas
+- How to use pandas to read the relevant file(s)
+- How to select/print the relevant columns using pandas"""
+
+    def _create_explore_agent(self) -> DataScienceAgent:
+        """Create an explore agent with only the execute_python_code tool."""
+        agent = DataScienceAgent(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            max_iterations=self.explore_max_iterations,
+            model=self.model,
+            verbose=self.verbose,
+            stream=self.stream,
+            skip_final_response=False,
+            tools=[execute_python_code_tool],
+            system_prompt=self.EXPLORE_SYSTEM_PROMPT,
+            final_prompt=self.EXPLORE_FINAL_PROMPT
+        )
+        agent.reset_conversation()
+        return agent
+
     def _create_solver_agent(self) -> DataScienceAgent:
         """Create a solver agent with only the execute_python_code tool."""
         agent = DataScienceAgent(
@@ -140,6 +190,53 @@ Use print() to show results. Preserve exact case of data values."""
         )
         agent.reset_conversation()
         return agent
+
+    def _extract_python_code(self, text: str) -> Optional[str]:
+        """
+        Extract Python code from a text response containing ```python code blocks.
+
+        Args:
+            text: The text response from the agent
+
+        Returns:
+            The extracted Python code, or None if no code block found
+        """
+        if not text:
+            return None
+
+        # Look for ```python ... ``` blocks
+        pattern = r'```python\s*(.*?)\s*```'
+        matches = re.findall(pattern, text, re.DOTALL)
+
+        if matches:
+            # Return the last code block (most likely the final summary)
+            return matches[-1].strip()
+
+        return None
+
+    def _get_data_files_info(self) -> str:
+        """
+        Get information about available data files in the data directory.
+
+        Returns:
+            String describing available data files, either from file_structures
+            or by scanning the directory.
+        """
+        if self.file_structures:
+            return f"Available data files in '{self.data_dir}/':\n{self.file_structures}"
+
+        # Scan directory for data files
+        data_files = []
+        for ext in ['*.csv', '*.json', '*.jsonl']:
+            pattern = os.path.join(self.data_dir, ext)
+            data_files.extend(glob.glob(pattern))
+
+        if data_files:
+            data_files.sort()
+            file_list = "\n".join([f"- {os.path.basename(f)}" for f in data_files])
+            return f"Available data files in '{self.data_dir}/':\n{file_list}"
+
+        return f"Data directory: {self.data_dir}/ (scan for csv/json/jsonl files)"
 
     def get_question(self, index: int) -> Dict[str, Any]:
         """
@@ -216,38 +313,93 @@ Available documentation files:
 
         return response
 
-    def solve_with_research(
+    def explore(self, question_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Run the explore phase to find relevant data files and columns.
+
+        Args:
+            question_data: Dictionary containing the question
+
+        Returns:
+            Python code snippet showing how to read relevant files and columns,
+            or None if exploration failed
+        """
+        if self.verbose:
+            print("\n" + "=" * 70)
+            print("PHASE 2: EXPLORE - Finding relevant data files and columns")
+            print("=" * 70 + "\n")
+
+        explore_agent = self._create_explore_agent()
+
+        # Get data files info
+        data_files_info = self._get_data_files_info()
+
+        prompt = f"""QUESTION: {question_data['question']}
+
+{data_files_info}
+
+YOUR TASK (DO NOT SOLVE THE QUESTION):
+1. Explore the data files to understand their structure
+2. Identify which file(s) are relevant to the question
+3. Identify which column(s) in those files are relevant
+
+IMPORTANT: Do NOT try to answer the question. Only identify the relevant files and columns.
+
+After exploration, provide a FINAL Python code snippet in a ```python block using pandas that shows:
+- import pandas as pd
+- How to read the relevant file(s) with pandas
+- How to select/print the relevant columns
+
+This code will be given to another agent who will solve the question."""
+
+        response = explore_agent.process_prompt(prompt)
+
+        # Filter out error/warning messages
+        if response and "Warning: Reached maximum iterations" in response:
+            response = None
+
+        # Extract the Python code from the response
+        explore_code = self._extract_python_code(response) if response else None
+
+        if self.verbose:
+            print("\n" + "=" * 70)
+            print("EXPLORE RESULTS:")
+            print("-" * 70)
+            if explore_code:
+                print("Extracted code:")
+                print(explore_code)
+            else:
+                print("(No code extracted)")
+            print("=" * 70 + "\n")
+
+        return explore_code
+
+    def _run_solver(
         self,
         question_data: Dict[str, Any],
-        research_info: Optional[str] = None
+        research_info: Optional[str] = None,
+        explore_code: Optional[str] = None
     ) -> str:
         """
-        Run the solver phase to answer the question using Python code.
+        Run the solver phase (Phase 3) to answer the question using Python code.
 
         Args:
             question_data: Dictionary containing the question, guidelines, etc.
             research_info: Optional documentation info from research phase
+            explore_code: Optional Python code from explore phase showing relevant files/columns
 
         Returns:
             The agent's answer to the question
         """
         if self.verbose:
             print("\n" + "=" * 70)
-            print("PHASE 2: SOLVING - Analyzing data with Python")
+            print("PHASE 3: SOLVING - Analyzing data with Python")
             print("=" * 70 + "\n")
 
         solver_agent = self._create_solver_agent()
 
         # Build data files section
-        if self.file_structures:
-            data_files_section = f"Available data files in '{self.data_dir}/':\n{self.file_structures}"
-        else:
-            data_files_section = f"""Available data files in '{self.data_dir}/':
-- payments.csv: Payment transactions
-- fees.json: Fee structures
-- merchant_data.json: Merchant information
-- acquirer_countries.csv: Acquirer country data
-- merchant_category_codes.csv: MCC codes"""
+        data_files_section = self._get_data_files_info()
 
         # Build research info section
         research_section = ""
@@ -257,18 +409,30 @@ RELEVANT DOCUMENTATION (from research phase):
 {research_info}
 """
 
+        # Build explore code section
+        explore_section = ""
+        if explore_code:
+            explore_section = f"""
+RELEVANT FILES AND COLUMNS (from explore phase):
+The following code shows how to access the relevant data:
+```python
+{explore_code}
+```
+"""
+
         prompt = f"""You are analyzing payment transaction data for a data science benchmark.
 
 {data_files_section}
-{research_section}
+{research_section}{explore_section}
 QUESTION: {question_data['question']}
 
 GUIDELINES: {question_data.get('guidelines', 'N/A')}
 
 INSTRUCTIONS:
 1. Use the provided documentation information above to understand the terms and definitions
-2. Use execute_python_code to load and analyze the relevant data files
-3. Provide the final answer following the guidelines exactly
+2. Use the explore code above as a starting point for loading the relevant data
+3. Use execute_python_code to analyze the data and answer the question
+4. Provide the final answer following the guidelines exactly
 """
 
         if self.verbose:
@@ -285,14 +449,16 @@ INSTRUCTIONS:
     def solve_question(
         self,
         question_data: Dict[str, Any],
-        skip_research: bool = False
+        skip_research: bool = False,
+        skip_explore: bool = False
     ) -> str:
         """
-        Solve a question using the two-agent approach.
+        Solve a question using the three-phase approach.
 
         Args:
             question_data: Dictionary containing the question data
             skip_research: If True, skip the research phase
+            skip_explore: If True, skip the explore phase
 
         Returns:
             The agent's answer to the question
@@ -302,7 +468,7 @@ INSTRUCTIONS:
 
         if self.verbose:
             print("\n" + "=" * 70)
-            print("QAAgent - Solving Question (Two-Agent Approach)")
+            print("QAAgent - Solving Question (Three-Phase Approach)")
             print("=" * 70 + "\n")
 
         # Phase 1: Research (skip if no markdown files or explicitly requested)
@@ -312,8 +478,13 @@ INSTRUCTIONS:
         elif self.verbose and not self.has_markdown_files:
             print("Research phase bypassed: no markdown files in data directory")
 
-        # Phase 2: Solve
-        answer = self.solve_with_research(question_data, research_info)
+        # Phase 2: Explore (find relevant files and columns)
+        explore_code = None
+        if not skip_explore:
+            explore_code = self.explore(question_data)
+
+        # Phase 3: Solve
+        answer = self._run_solver(question_data, research_info, explore_code)
 
         if self.verbose:
             print("\n" + "=" * 70)
@@ -329,7 +500,8 @@ INSTRUCTIONS:
     def solve(
         self,
         question_id: int,
-        skip_research: bool = False
+        skip_research: bool = False,
+        skip_explore: bool = False
     ) -> str:
         """
         Solve a question by its index.
@@ -337,12 +509,13 @@ INSTRUCTIONS:
         Args:
             question_id: Index of the question to solve (0-based)
             skip_research: If True, skip the research phase
+            skip_explore: If True, skip the explore phase
 
         Returns:
             The agent's answer to the question
         """
         question_data = self.get_question(question_id)
-        return self.solve_question(question_data, skip_research=skip_research)
+        return self.solve_question(question_data, skip_research=skip_research, skip_explore=skip_explore)
 
     def set_file_structures(self, file_structures: str):
         """
