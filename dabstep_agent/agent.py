@@ -43,7 +43,8 @@ class DataScienceAgent:
         force_final_response_after_success: bool = False,
         stream: bool = False,
         skip_final_response: bool = False,
-        tools: Optional[List[Dict[str, Any]]] = None
+        tools: Optional[List[Dict[str, Any]]] = None,
+        system_prompt: Optional[str] = None
     ):
         """
         Initialize the DataScienceAgent.
@@ -73,6 +74,8 @@ class DataScienceAgent:
             tools: Optional list of tool definitions to make available to the agent.
                 If None, all tools from ALL_TOOLS are used. Pass a subset to restrict
                 which tools the agent can call.
+            system_prompt: Optional custom system prompt. If None, uses the default
+                data science focused prompt.
         """
         # Configuration
         self.base_url = base_url
@@ -96,7 +99,7 @@ class DataScienceAgent:
             api_key=self.api_key
         )
 
-        self.sys_prompt = "/no_think " \
+        default_sys_prompt = "/no_think " \
         "You are a data science expert. " \
         "Write complete, executable Python code or call provided tools. " \
         "IMPORTANT: Do NOT assume variables exist unless shown in the execution environment state. " \
@@ -105,7 +108,8 @@ class DataScienceAgent:
         "Use print() to show results. " \
         "Preserve exact case of data values. Don't change 'apple' to 'Apple'. " \
         "Now answer user's request:\n"
-        self.user_prompt=""
+        self.sys_prompt = system_prompt if system_prompt else default_sys_prompt
+        self.user_prompt = ""
 
         # Conversation state
         self.messages: List[Dict[str, Any]] = [
@@ -248,6 +252,56 @@ class DataScienceAgent:
 
         return Message(complete_content, tool_calls_list)
 
+    def _request_final_summary(self, reason: str = "") -> str:
+        """
+        Request a final summary from the LLM without tool access.
+
+        Args:
+            reason: Optional reason for requesting summary (for verbose logging)
+
+        Returns:
+            The LLM's summary response
+        """
+        if self.verbose and reason:
+            print(f"\n  {reason}, requesting final summary from LLM...")
+
+        # Add a user message asking for final response
+        self.messages.append({
+            "role": "user",
+            "content": "Please provide a final response summarizing what was accomplished based on the conversation history. Do not make any tool calls."
+        })
+
+        # Call LLM without tools to force a text response
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=self.messages,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            stream=self.stream
+        )
+
+        if self.stream:
+            assistant_message = self._process_streaming_response(response)
+        else:
+            assistant_message = response.choices[0].message
+
+        final_content = clean_assistant_content(assistant_message.content or "(No response)")
+
+        # Add assistant's final message to conversation
+        self.messages.append({
+            "role": "assistant",
+            "content": final_content
+        })
+
+        if self.verbose:
+            print("\n[AGENT RESPONSE]")
+            print("-" * 70)
+            print(final_content)
+            print("-" * 70)
+            print()
+
+        return final_content
+
     def process_prompt(self, user_prompt: str) -> str:
         """
         Process a user prompt and return the agent's response.
@@ -307,7 +361,7 @@ class DataScienceAgent:
             if self.awaiting_final_response:
                 messages_with_context.append({
                     "role": "user",
-                    "content": "Please summarize the results above in natural language. Do not make any tool calls."
+                    "content": "Please summarize the key results above regarding my request in up to 50 words."
                 })
 
             #print(messages_with_context)
@@ -509,13 +563,17 @@ class DataScienceAgent:
                             break
             else:
                 # No more tool calls, we have the final response
-                final_content = clean_assistant_content(assistant_message.content or "(No response)")
+                final_content = clean_assistant_content(assistant_message.content or "")
                 self.awaiting_final_response = False
 
                 # Check if content looks like a tool call JSON (even though tools were disabled)
                 # If so, treat it as empty response
                 if final_content.strip().startswith("{") and "tool_calls" in final_content:
                     final_content = ""
+
+                # If response is empty, request a summary from the LLM
+                if not final_content.strip() and not self.skip_final_response:
+                    return self._request_final_summary("LLM returned empty response")
 
                 # Add assistant's final message to conversation
                 self.messages.append({
@@ -540,6 +598,13 @@ class DataScienceAgent:
                 return final_content
 
         # Max iterations reached
+        # If skip_final_response is False and last iteration was a tool call,
+        # ask LLM for a final response without tools
+        if not self.skip_final_response:
+            # Check if last message was a tool result (meaning last iteration was a tool call)
+            if self.messages and self.messages[-1].get("role") == "tool":
+                return self._request_final_summary("Max iterations reached")
+
         warning = f" Warning: Reached maximum iterations ({self.max_iterations})"
         if self.verbose:
             print(f"\n{warning}")
