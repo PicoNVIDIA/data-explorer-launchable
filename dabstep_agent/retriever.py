@@ -179,11 +179,6 @@ search_doc_tool = {
                 "file_path": {
                     "type": "string",
                     "description": "Path to the document file to search"
-                },
-                "top_k": {
-                    "type": "integer",
-                    "description": "Number of top results to return (default: 1)",
-                    "default": 1
                 }
             },
             "required": ["term", "file_path"]
