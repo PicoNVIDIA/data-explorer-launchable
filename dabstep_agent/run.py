@@ -1,7 +1,7 @@
 import json
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
-from solver import solver, load_question
+from qa_agent import QAAgent, load_question
 from extract_structure_example import (
     create_structure_extraction_agent,
     extract_all_structures,
@@ -28,13 +28,18 @@ def extract_file_structures_once(data_dir: str = "data/context") -> str:
 
 
 def solve_single_task(task_id: int, file_structures: str = None) -> dict:
-    """Solve a single task using two-agent approach and return the result."""
+    """Solve a single task using QAAgent and return the result."""
     try:
-        dev_jsonl = "data/tasks_dev.json"
-        question = load_question(dev_jsonl, index=task_id)
+        # Create QAAgent instance
+        agent = QAAgent(
+            data_dir="data/context",
+            tasks_file="data/tasks_dev.json",
+            file_structures=file_structures,
+            verbose=True
+        )
 
-        # solver() now creates agents internally (research + solver)
-        answer = solver(None, task_id, file_structures=file_structures)
+        question = agent.get_question(task_id)
+        answer = agent.solve(task_id)
 
         return {
             "task_id": question.get("task_id", task_id),
@@ -136,11 +141,19 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
 
 
 def solve_single(task_id: int):
-    """Solve a single task using two-agent approach."""
+    """Solve a single task using QAAgent."""
     # Pre-extract file structures
     file_structures = extract_file_structures_once()
-    # solver() now creates agents internally (research + solver)
-    solver(None, task_id, file_structures=file_structures)
+
+    # Create and use QAAgent
+    agent = QAAgent(
+        data_dir="data/context",
+        tasks_file="data/tasks_dev.json",
+        file_structures=file_structures,
+        verbose=True
+    )
+
+    return agent.solve(task_id)
 
 
 if __name__ == "__main__":
