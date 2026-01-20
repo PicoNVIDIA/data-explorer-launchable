@@ -677,6 +677,16 @@ class DataScienceAgent:
             if reset_result.get("success"):
                 print("  All variables cleared from execution environment.")
 
+    def save_messages(self, filepath: str) -> None:
+        """
+        Save conversation history to a JSON file.
+
+        Args:
+            filepath: Path to the JSON file to save messages to
+        """
+        with open(filepath, 'w') as f:
+            json.dump(self.messages, f, indent=2)
+
     def get_conversation_history(self) -> List[Dict[str, Any]]:
         """
         Get the full conversation history.
