@@ -30,7 +30,7 @@ class QAAgent:
 
     RESEARCH_SYSTEM_PROMPT = """You are a documentation researcher. Your task is to search for domain-specific term definitions.
 Use search_doc(term="term", file_path="path") to look up terms.
-Search for 1-3 key terms that may have special definitions. Do NOT search common words.
+Search for 1-3 key terms that may have special definitions. 
 After searching, provide a VERY BRIEF summary (max 50 words, just use bullet points, no intro, no headers, no conclusions).
 
 Output Format:
@@ -293,7 +293,7 @@ Provide a FINAL Python code snippet in a ```python block that demonstrates:
         # Build file paths list for all markdown files
         file_paths = "\n".join([f"- {md_file}" for md_file in self._md_files])
 
-        prompt = f"""QUESTION: {question_data['question']}
+        prompt = f"""QUESTION: {question_data['question'].split('?')[0]}
 
 Available documentation files:
 {file_paths}"""
