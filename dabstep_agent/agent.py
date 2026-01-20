@@ -451,6 +451,12 @@ class DataScienceAgent:
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
 
+                    # Recover incorrect tool names containing "python" to execute_python_code
+                    if "python" in tool_name.lower() and tool_name != "execute_python_code":
+                        if self.verbose:
+                            print(f"  ⚠️ Recovered tool name: '{tool_name}' -> 'execute_python_code'")
+                        tool_name = "execute_python_code"
+
                     # Parse arguments - handle both string (JSON) and dict formats
                     try:
                         if isinstance(tool_call.function.arguments, str):
@@ -677,13 +683,19 @@ class DataScienceAgent:
             if reset_result.get("success"):
                 print("  All variables cleared from execution environment.")
 
-    def save_messages(self, filepath: str) -> None:
+    def save_messages(self, filepath: str, add_timestamp: bool = True) -> None:
         """
         Save conversation history to a JSON file.
 
         Args:
             filepath: Path to the JSON file to save messages to
+            add_timestamp: If True, add timestamp to filename (x.json -> x_yymmddhhmmss.json)
         """
+        if add_timestamp:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+            base, ext = os.path.splitext(filepath)
+            filepath = f"{base}_{timestamp}{ext}"
         with open(filepath, 'w') as f:
             json.dump(self.messages, f, indent=2)
 
