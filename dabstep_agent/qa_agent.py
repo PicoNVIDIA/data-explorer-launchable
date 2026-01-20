@@ -55,7 +55,6 @@ IMPORTANT: Your goal is NOT to solve the question. Your goal is ONLY to:
 Use execute_python_code to explore the files and their structure.
 
 After exploration, provide a FINAL Python code snippet in a ```python block that demonstrates:
-- How to import pandas
 - How to use pandas to read the relevant file(s)
 - How to select/print the relevant columns using pandas
 
@@ -164,7 +163,6 @@ Output Format:
 
     EXPLORE_FINAL_PROMPT = f"""Please provide a final response summarizing what was accomplished based on the conversation history. Format:
 Provide a FINAL Python code snippet in a ```python block that demonstrates:
-- How to import pandas
 - How to use pandas to read the relevant file(s)
 - How to select/print the relevant columns using pandas
 {INSIGHT}
@@ -362,7 +360,6 @@ YOUR TASK (DO NOT SOLVE THE QUESTION):
 IMPORTANT: Do NOT try to answer the question. Only identify the relevant files and columns.
 
 After exploration, provide a FINAL Python code snippet in a ```python block using pandas that shows:
-- import pandas as pd
 - How to read the relevant file(s) with pandas
 - How to select/print the relevant columns
 
