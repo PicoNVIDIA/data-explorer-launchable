@@ -45,7 +45,9 @@ class DataScienceAgent:
         skip_final_response: bool = False,
         tools: Optional[List[Dict[str, Any]]] = None,
         system_prompt: Optional[str] = None,
-        final_prompt: Optional[str] = None
+        final_prompt: Optional[str] = None,
+        insert_reminder = False,
+        clean_failed = False,
     ):
         """
         Initialize the DataScienceAgent.
@@ -81,6 +83,8 @@ class DataScienceAgent:
                 uses the default prompt asking for a summary of what was accomplished.
         """
         # Configuration
+        self.clean_failed = clean_failed
+        self.insert_reminder = insert_reminder
         self.base_url = base_url
         self.model = model
         self.max_iterations = max_iterations
@@ -557,7 +561,7 @@ class DataScienceAgent:
                     })
 
                     # Clean up failed executions if this execution succeeded
-                    if result.get("success", False):
+                    if self.clean_failed and result.get("success", False):
                         original_count = len(self.messages)
                         self.messages = clean_failed_executions(self.messages)
                         removed_count = original_count - len(self.messages)
@@ -592,6 +596,11 @@ class DataScienceAgent:
 
                             # Continue the loop to get the LLM's response
                             break
+                if self.insert_reminder:
+                    self.messages.append({
+                            "role": "user",
+                            "content": "Reminder: Don't forget your task. Don't over exploring."
+                        })
             else:
                 # No more tool calls, we have the final response
                 final_content = clean_assistant_content(assistant_message.content or "")

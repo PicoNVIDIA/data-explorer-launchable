@@ -38,6 +38,12 @@ Output Format:
 - term2: definitions found
 """
 
+    INSIGHT="""Regarding field filtering:
+* when filtering, treat null as a wild card.
+* Example: To filter where 'column' matches 'value', you should check 'column' matches 'value' OR is null (wildcard):
+  before: df[(df['column'] == 'value') 
+  after: df[(df['column'] == 'value') | (df['column'].isnull())]"""
+
     EXPLORE_SYSTEM_PROMPT = """You are a data exploration expert.
 Your task is to explore data files and identify which files and columns are relevant to answer a question.
 
@@ -147,16 +153,22 @@ Use print() to show results. Preserve exact case of data values."""
             stream=self.stream,
             skip_final_response=False,
             tools=[search_doc_tool],
-            system_prompt=self.RESEARCH_SYSTEM_PROMPT
+            system_prompt=self.RESEARCH_SYSTEM_PROMPT,
+            final_prompt="""Summarize search results.
+Output Format:
+- term1: definitions found
+- term2: definitions found"""
         )
         agent.reset_conversation()
         return agent
 
-    EXPLORE_FINAL_PROMPT = """Please provide a final response summarizing what was accomplished based on the conversation history. Format:
+    EXPLORE_FINAL_PROMPT = f"""Please provide a final response summarizing what was accomplished based on the conversation history. Format:
 Provide a FINAL Python code snippet in a ```python block that demonstrates:
 - How to import pandas
 - How to use pandas to read the relevant file(s)
-- How to select/print the relevant columns using pandas"""
+- How to select/print the relevant columns using pandas
+{INSIGHT}
+"""
 
     def _create_explore_agent(self) -> DataScienceAgent:
         """Create an explore agent with only the execute_python_code tool."""
@@ -170,7 +182,8 @@ Provide a FINAL Python code snippet in a ```python block that demonstrates:
             skip_final_response=False,
             tools=[execute_python_code_tool],
             system_prompt=self.EXPLORE_SYSTEM_PROMPT,
-            final_prompt=self.EXPLORE_FINAL_PROMPT
+            final_prompt=self.EXPLORE_FINAL_PROMPT,
+            insert_reminder=True
         )
         agent.reset_conversation()
         return agent
@@ -186,7 +199,8 @@ Provide a FINAL Python code snippet in a ```python block that demonstrates:
             stream=self.stream,
             skip_final_response=False,
             tools=[execute_python_code_tool],
-            system_prompt=self.SOLVER_SYSTEM_PROMPT
+            system_prompt=self.SOLVER_SYSTEM_PROMPT,
+            insert_reminder=True
         )
         agent.reset_conversation()
         return agent
@@ -205,7 +219,7 @@ Provide a FINAL Python code snippet in a ```python block that demonstrates:
             return None
 
         # Look for ```python ... ``` blocks
-        pattern = r'```python\s*(.*?)\s*```'
+        pattern = r'```python\s*(.*?)(?:\s*```|\Z)' 
         matches = re.findall(pattern, text, re.DOTALL)
 
         if matches:
@@ -343,6 +357,8 @@ YOUR TASK (DO NOT SOLVE THE QUESTION):
 2. Identify which file(s) are relevant to the question
 3. Identify which column(s) in those files are relevant
 
+{self.INSIGHT}
+
 IMPORTANT: Do NOT try to answer the question. Only identify the relevant files and columns.
 
 After exploration, provide a FINAL Python code snippet in a ```python block using pandas that shows:
@@ -424,9 +440,13 @@ The following code shows how to access the relevant data:
 
 {data_files_section}
 {research_section}{explore_section}
+
+{self.INSIGHT}
+
 QUESTION: {question_data['question']}
 
 GUIDELINES: {question_data.get('guidelines', 'N/A')}
+
 
 INSTRUCTIONS:
 1. Use the provided documentation information above to understand the terms and definitions
