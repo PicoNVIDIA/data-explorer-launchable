@@ -1,10 +1,7 @@
-import os
 import json
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
-from agent import DataScienceAgent
-from utils import solver, load_question
-from tools import execute_python_code_tool, search_doc_tool
+from solver import solver, load_question
 from extract_structure_example import (
     create_structure_extraction_agent,
     extract_all_structures,
@@ -30,31 +27,14 @@ def extract_file_structures_once(data_dir: str = "data/context") -> str:
     return _FILE_STRUCTURES
 
 
-def create_agent():
-    """Create a new DataScienceAgent instance."""
-    api_key = os.environ.get("NVIDIA_API_KEY")
-    agent = DataScienceAgent(
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key=api_key,
-        max_iterations=100,
-        model="nvidia/nemotron-3-nano-30b-a3b",
-        verbose=True,
-        stream=True,
-        skip_final_response=False,
-        tools=[execute_python_code_tool, search_doc_tool]
-    )
-    agent.reset_conversation()
-    return agent
-
-
 def solve_single_task(task_id: int, file_structures: str = None) -> dict:
-    """Solve a single task and return the result."""
+    """Solve a single task using two-agent approach and return the result."""
     try:
-        agent = create_agent()
         dev_jsonl = "data/tasks_dev.json"
         question = load_question(dev_jsonl, index=task_id)
 
-        answer = solver(agent, task_id, file_structures=file_structures)
+        # solver() now creates agents internally (research + solver)
+        answer = solver(None, task_id, file_structures=file_structures)
 
         return {
             "task_id": question.get("task_id", task_id),
@@ -156,11 +136,11 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
 
 
 def solve_single(task_id: int):
-    """Solve a single task (original behavior)."""
+    """Solve a single task using two-agent approach."""
     # Pre-extract file structures
     file_structures = extract_file_structures_once()
-    agent = create_agent()
-    solver(agent, task_id, file_structures=file_structures)
+    # solver() now creates agents internally (research + solver)
+    solver(None, task_id, file_structures=file_structures)
 
 
 if __name__ == "__main__":
