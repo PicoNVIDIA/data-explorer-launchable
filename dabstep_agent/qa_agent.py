@@ -12,6 +12,7 @@ Example usage:
     answer = agent.solve_question(question_data)
 """
 
+import glob
 import json
 import os
 from typing import Optional, Dict, List, Any
@@ -53,7 +54,7 @@ Use print() to show results. Preserve exact case of data values."""
         Initialize the QAAgent.
 
         Args:
-            data_dir: Directory containing data files (CSVs, JSONs, manual.md)
+            data_dir: Directory containing data files (CSVs, JSONs, *.md)
             tasks_file: Path to the JSON file containing task questions
             api_key: API key for the LLM service (defaults to NVIDIA_API_KEY env var)
             base_url: Base URL for the LLM API endpoint
@@ -79,12 +80,24 @@ Use print() to show results. Preserve exact case of data values."""
         self._questions: List[Dict[str, Any]] = []
         self._load_questions()
 
+        # Find markdown files in data directory
+        self._md_files: List[str] = []
+        self._find_markdown_files()
+
         if self.verbose:
             print(f"QAAgent initialized")
             print(f"  Data directory: {self.data_dir}")
             print(f"  Tasks file: {self.tasks_file}")
             print(f"  Number of questions: {len(self._questions)}")
+            print(f"  Markdown files: {self._md_files if self._md_files else '(none found)'}")
             print()
+
+    def _find_markdown_files(self):
+        """Find all markdown files in the data directory."""
+        pattern = os.path.join(self.data_dir, "*.md")
+        self._md_files = glob.glob(pattern)
+        # Sort for consistent ordering
+        self._md_files.sort()
 
     def _load_questions(self):
         """Load questions from the tasks file."""
@@ -150,6 +163,11 @@ Use print() to show results. Preserve exact case of data values."""
         """Return the total number of questions."""
         return len(self._questions)
 
+    @property
+    def has_markdown_files(self) -> bool:
+        """Return True if markdown files are available for research."""
+        return len(self._md_files) > 0
+
     def research(self, question_data: Dict[str, Any]) -> Optional[str]:
         """
         Run the research phase to find relevant documentation.
@@ -160,6 +178,14 @@ Use print() to show results. Preserve exact case of data values."""
         Returns:
             String containing relevant documentation info, or None if not found
         """
+        # Skip if no markdown files available
+        if not self._md_files:
+            if self.verbose:
+                print("\n" + "=" * 70)
+                print("PHASE 1: RESEARCH - Skipped (no markdown files found)")
+                print("=" * 70 + "\n")
+            return None
+
         if self.verbose:
             print("\n" + "=" * 70)
             print("PHASE 1: RESEARCH - Finding relevant documentation")
@@ -167,9 +193,13 @@ Use print() to show results. Preserve exact case of data values."""
 
         research_agent = self._create_research_agent()
 
+        # Build file paths list for all markdown files
+        file_paths = "\n".join([f"- {md_file}" for md_file in self._md_files])
+
         prompt = f"""QUESTION: {question_data['question']}
 
-File path: {self.data_dir}/manual.md"""
+Available documentation files:
+{file_paths}"""
 
         response = research_agent.process_prompt(prompt)
 
@@ -275,10 +305,12 @@ INSTRUCTIONS:
             print("QAAgent - Solving Question (Two-Agent Approach)")
             print("=" * 70 + "\n")
 
-        # Phase 1: Research
+        # Phase 1: Research (skip if no markdown files or explicitly requested)
         research_info = None
-        if not skip_research:
+        if not skip_research and self.has_markdown_files:
             research_info = self.research(question_data)
+        elif self.verbose and not self.has_markdown_files:
+            print("Research phase bypassed: no markdown files in data directory")
 
         # Phase 2: Solve
         answer = self.solve_with_research(question_data, research_info)
