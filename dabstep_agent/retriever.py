@@ -27,7 +27,7 @@ def get_embeddings(texts: list, input_type: str, api_key: str = DEFAULT_API_KEY,
         input=texts,
         model=model,
         encoding_format="float",
-        extra_body={"input_type": input_type, "truncate": "NONE"}
+        extra_body={"input_type": input_type, "truncate": "END"}
     )
     return [d.embedding for d in response.data]
 
@@ -44,7 +44,7 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
     Args:
         term: The term to search for in the document.
         file_path: Path to the document file to search.
-        top_k: Number of top results to return (default: 5).
+        top_k: Number of top results to return (default: 1).
         verbose: If True, print execution details.
 
     Returns:
@@ -65,11 +65,10 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
             "error": f"File not found: {file_path}"
         }
 
-    # Step 1: Run grep to get relevant lines with context
-    # Using -i for case-insensitive, -B 2 -A 2 for context lines
+    # Step 1: Run grep to get matching lines (each line is a chunk)
     try:
         result = subprocess.run(
-            ["grep", "-i", "-B", "2", "-A", "2", term, file_path],
+            ["grep", "-i", term, file_path],
             capture_output=True,
             text=True,
             timeout=30
@@ -93,47 +92,14 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
             "error": f"No matches found for term '{term}' in {file_path}"
         }
 
-    # Split output by "--" (grep's context separator) or newlines
-    # grep -A -B uses "--" to separate match groups
-    raw_chunks = grep_output.split("--")
-
-    # Process each chunk: create smaller passages centered on lines containing the term
-    # This prevents unrelated context from diluting the semantic signal
+    # Each line is a chunk - deduplicate
     passages = []
     seen = set()
-    term_lower = term.lower()
-
-    for chunk in raw_chunks:
-        # Keep all lines (including empty ones) to preserve paragraph structure
-        lines = [line.strip() for line in chunk.strip().split("\n")]
-        if not lines or all(not line for line in lines):
-            continue
-
-        # Find lines that actually contain the search term
-        term_line_indices = [i for i, line in enumerate(lines) if term_lower in line.lower()]
-
-        if term_line_indices:
-            # Create a small passage around each line containing the term
-            # But stop at empty lines (paragraph boundaries)
-            for idx in term_line_indices:
-                # Find paragraph boundaries (empty lines) around the match
-                start = idx
-                while start > 0 and lines[start - 1]:
-                    start -= 1
-                end = idx + 1
-                while end < len(lines) and lines[end]:
-                    end += 1
-                # Join non-empty lines in this paragraph
-                passage = " ".join(line for line in lines[start:end] if line)
-                if passage and passage not in seen:
-                    passages.append(passage)
-                    seen.add(passage)
-        else:
-            # Fallback: if somehow no term found, use the whole chunk (non-empty lines only)
-            passage = " ".join(line for line in lines if line)
-            if passage and passage not in seen:
-                passages.append(passage)
-                seen.add(passage)
+    for line in grep_output.strip().split("\n"):
+        line = line.strip()
+        if line and line not in seen:
+            passages.append(line)
+            seen.add(line)
 
     if not passages:
         return {
@@ -144,36 +110,39 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
     if verbose:
         print(f"Grep found {len(passages)} passage(s)")
 
-    # Step 2: Construct semantic query
-    query = f"what is the definition of {term}"
-
+    # Step 2: Construct semantic queries (two phrasings)
+    queries = [
+        f"what is the definition of {term}",
+        f"How to calculate the {term}?"
+    ]
     if verbose:
-        print(f"Semantic query: {query}")
+        print(f"Semantic queries: {queries}")
         print("-" * 60)
 
     # Step 3: Semantic search using embeddings
     try:
-        query_embedding = np.array(get_embeddings([query], "query")[0])
+        query_embeddings = np.array(get_embeddings(queries, "query"))
         passage_embeddings = np.array(get_embeddings(passages, "passage"))
 
-        # Calculate cosine similarity (vectors are normalized)
-        scores = np.dot(passage_embeddings, query_embedding)
-
-        # Get top-k indices (but not more than available passages)
+        # Get top-k for each query and combine
         actual_top_k = min(top_k, len(passages))
-        top_indices = np.argsort(scores)[::-1][:actual_top_k]
+        combined_indices = set()
+
+        for query_embedding in query_embeddings:
+            scores = np.dot(passage_embeddings, query_embedding)
+            top_indices = np.argsort(scores)[::-1][:actual_top_k]
+            combined_indices.update(top_indices)
 
         # Format results
         results = []
         formatted_results = []
-        for i, idx in enumerate(top_indices):
+        for i, idx in enumerate(combined_indices):
             rank = i + 1
-            score = float(scores[idx])
             passage = passages[idx]
             results.append({
                 "passage": passage
             })
-            formatted_results.append(f"{rank}. (score: {score:.4f}) {passage}")
+            formatted_results.append(f"{rank}. {passage}")
 
         output = "\n".join(formatted_results)
 
@@ -183,8 +152,7 @@ def search_doc(term: str, file_path: str, top_k: int = DEFAULT_TOP_K, verbose: b
         return {
             "success": True,
             "results": results,
-            #"formatted_output": output,
-            "message": f"Found top {len(results)} relevant passages for '{term}'"
+            "message": f"Found {len(results)} relevant passages for '{term}'"
         }
 
     except Exception as e:
@@ -227,13 +195,14 @@ search_doc_tool = {
 if __name__ == "__main__":
     # Simple test
     test_file = "data/context/manual.md"
-    test_term = "fraud"
+    import sys
+    test_term = sys.argv[1]
 
     print("=" * 60)
     print("Testing search_doc function")
     print("=" * 60)
 
-    result = search_doc(term=test_term, file_path=test_file, top_k=3)
+    result = search_doc(term=test_term, file_path=test_file, top_k=1)
 
     print("\n" + "=" * 60)
     print("Result:")
