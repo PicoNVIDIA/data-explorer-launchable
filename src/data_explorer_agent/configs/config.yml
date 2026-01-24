@@ -10,21 +10,18 @@ function_groups:
   notebook_function_group:
     _type: notebook_function_group
     notebook_path: "notebooks/example.ipynb"
-    vision_analyzer: 
-      provider: azure_openai
-      model_name: gpt-5-mini-20250807
-      api_key: $OPENAI_API_KEY
-      api_version: 2025-02-01-preview
-      api_base: https://llm-proxy.perflab.nvidia.com
+    vision_analyzer:
+      provider: nvidia_build
+      model_name: openai/openai/gpt-5-mini
+      api_key: $NV_INFER_API_KEY
+      api_base: https://inference-api.nvidia.com
 
 llms:
   agent_llm:
-    _type: azure_openai
-    api_key: $OPENAI_API_KEY
-    model_name: gpt-5-mini-20250807
-    azure_deployment: gpt-5-mini-20250807
-    azure_endpoint: https://llm-proxy.perflab.nvidia.com
-    api_version: 2025-02-01-preview
+    _type: openai
+    api_key: $NV_INFER_API_KEY
+    model: openai/openai/gpt-5-mini
+    base_url: https://inference-api.nvidia.com
 
 workflow:
   _type: react_agent
