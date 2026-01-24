@@ -168,7 +168,7 @@ def execute_python_code(code: str, use_gpu: bool = True, verbose: bool = True) -
 
         # If no output but code contains imports, provide feedback
         if not stdout_output.strip() and 'import ' in code:
-            stdout_output = "Libraries imported successfully.\n"
+            stdout_output = f"Libraries imported successfully: {code}\n Don't import them again"
 
         # Print the output so user can see it (only if verbose)
         if verbose:
@@ -397,7 +397,7 @@ execute_python_code_tool = {
             "properties": {
                 "code": {
                     "type": "string",
-                    "description": "The Python pandas code to execute. Use print() to output results. Do not include import statements for pandas. You can reference variables created in previous executions."
+                    "description": "The Python pandas code to execute. Use print() to output results. You can reference variables created in previous executions."
                 },
                 "use_gpu": {
                     "type": "boolean",

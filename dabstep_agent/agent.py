@@ -83,6 +83,7 @@ class DataScienceAgent:
                 uses the default prompt asking for a summary of what was accomplished.
         """
         # Configuration
+        self.insert_prompt = "Reminder: Don't forget your task. Don't over exploring."
         self.clean_failed = clean_failed
         self.insert_reminder = insert_reminder
         self.base_url = base_url
@@ -304,8 +305,10 @@ class DataScienceAgent:
                 tool_call_ids = {tc.get("id") for tc in msg.get("tool_calls", [])}
                 if tool_call_ids and tool_call_ids.issubset(failed_tool_call_ids):
                     continue  # Skip assistant message if all its tool calls failed
+            elif msg.get("role") == "user" and msg.get("content", "")==self.insert_prompt:
+                continue
             filtered_messages.append(msg)
-
+        print(filtered_messages)
         # Call LLM without tools to force a text response
         response = self.client.chat.completions.create(
             model=self.model,
@@ -605,7 +608,7 @@ class DataScienceAgent:
                 if self.insert_reminder:
                     self.messages.append({
                             "role": "user",
-                            "content": "Reminder: Don't forget your task. Don't over exploring."
+                            "content": self.insert_prompt
                         })
             else:
                 # No more tool calls, we have the final response
@@ -651,7 +654,7 @@ class DataScienceAgent:
         # ask LLM for a final response without tools
         if not self.skip_final_response:
             # Check if last message was a tool result (meaning last iteration was a tool call)
-            if self.messages and self.messages[-1].get("role") == "tool":
+            if self.messages and self.messages[-1].get("role") in ["tool","user"]:
                 return self._request_final_summary("Max iterations reached")
 
         warning = f" Warning: Reached maximum iterations ({self.max_iterations})"
