@@ -75,7 +75,7 @@ Use print() to show results. Preserve exact case of data values."""
         model: str = "nvidia/nemotron-3-nano-30b-a3b",
         research_max_iterations: int = 10,
         explore_max_iterations: int = 100,
-        solver_max_iterations: int = 100,
+        solver_max_iterations: int = 10,
         verbose: bool = True,
         stream: bool = False,
         file_structures: Optional[str] = None,
@@ -188,6 +188,10 @@ Provide a FINAL Python code snippet in a ```python block that demonstrates:
 
     def _create_solver_agent(self) -> DataScienceAgent:
         """Create a solver agent with only the execute_python_code tool."""
+        SOLVER_FINAL_PROMPT = f"""Please provide a final response summarizing what was accomplished based on the conversation history. Format:
+Provide a FINAL Python code snippet in a ```python block that answers this question:
+{self._questions}
+"""
         agent = DataScienceAgent(
             base_url=self.base_url,
             api_key=self.api_key,
@@ -198,6 +202,7 @@ Provide a FINAL Python code snippet in a ```python block that demonstrates:
             skip_final_response=False,
             tools=[execute_python_code_tool],
             system_prompt=self.SOLVER_SYSTEM_PROMPT,
+            final_prompt=SOLVER_FINAL_PROMPT,
             insert_reminder=True
         )
         agent.reset_conversation()
@@ -323,6 +328,9 @@ Available documentation files:
             print(response if response else "(No results)")
             print("=" * 70 + "\n")
 
+        # Save research agent history
+        research_agent.save_messages("research_history.json")
+
         return response
 
     def explore(self, question_data: Dict[str, Any]) -> Optional[str]:
@@ -384,6 +392,9 @@ This code will be given to another agent who will solve the question."""
             else:
                 print("(No code extracted)")
             print("=" * 70 + "\n")
+
+        # Save explore agent history
+        explore_agent.save_messages("explore_history.json")
 
         return explore_code
 
@@ -461,6 +472,10 @@ INSTRUCTIONS:
             print("=" * 70)
 
         answer = solver_agent.process_prompt(prompt)
+
+        # Save solver agent history
+        solver_agent.save_messages("solver_history.json")
+
         return answer
 
     def solve_question(
