@@ -564,6 +564,165 @@ INSTRUCTIONS:
         question_data = self.get_question(question_id)
         return self.solve_question(question_data, skip_research=skip_research, skip_explore=skip_explore)
 
+    def _run_learner(
+        self,
+        question_data: Dict[str, Any],
+        gt_answer: str,
+        research_info: Optional[str] = None,
+        explore_code: Optional[str] = None
+    ) -> str:
+        """
+        Run the learner phase to figure out Python code that produces the ground truth answer.
+
+        Args:
+            question_data: Dictionary containing the question, guidelines, etc.
+            gt_answer: The ground truth answer that the code should produce
+            research_info: Optional documentation info from research phase
+            explore_code: Optional Python code from explore phase showing relevant files/columns
+
+        Returns:
+            The agent's Python code solution that produces the ground truth answer
+        """
+        if self.verbose:
+            print("\n" + "=" * 70)
+            print("PHASE 3: LEARNING - Finding Python code to produce ground truth answer")
+            print("=" * 70 + "\n")
+
+        solver_agent = self._create_solver_agent()
+
+        # Build data files section
+        data_files_section = self._get_data_files_info()
+
+        # Build research info section
+        research_section = ""
+        if research_info:
+            research_section = f"""
+RELEVANT DOCUMENTATION (from research phase):
+{research_info}
+"""
+
+        # Build explore code section
+        explore_section = ""
+        if explore_code:
+            explore_section = f"""
+RELEVANT FILES AND COLUMNS (from explore phase):
+The following code shows how to access the relevant data:
+```python
+{explore_code}
+```
+"""
+
+        prompt = f"""You are analyzing payment transaction data for a data science benchmark.
+
+{data_files_section}
+{research_section}{explore_section}
+
+QUESTION: {question_data['question']}
+
+GUIDELINES: {question_data.get('guidelines', 'N/A')}
+
+GROUND TRUTH ANSWER: {gt_answer}
+
+INSTRUCTIONS:
+1. Use the provided documentation information above to understand the terms and definitions
+2. Use the explore code above as a starting point for loading the relevant data
+3. Your goal is to write Python code that produces EXACTLY the ground truth answer: {gt_answer}
+4. Use execute_python_code to analyze the data and verify your code produces the correct answer
+5. Think step by step about what data transformations, filters, or calculations are needed
+6. The final print() output must match the ground truth answer exactly
+7. Once you find the correct solution, provide the complete Python code
+"""
+
+        if self.verbose:
+            print("=" * 70)
+            print(f"Task ID: {question_data.get('task_id', 'N/A')}")
+            print(f"Question: {question_data['question']}")
+            print(f"Level: {question_data.get('level', 'N/A')}")
+            print(f"Ground Truth Answer: {gt_answer}")
+            print("=" * 70)
+
+        answer = solver_agent.process_prompt(prompt)
+
+        # Save learner agent history
+        solver_agent.save_messages("learner_history.json")
+
+        return answer
+
+    def learn_question(
+        self,
+        question_data: Dict[str, Any],
+        gt_answer: str,
+        skip_research: bool = False,
+        skip_explore: bool = False
+    ) -> str:
+        """
+        Learn from a question by figuring out the code that produces the ground truth answer.
+
+        Args:
+            question_data: Dictionary containing the question data
+            gt_answer: The ground truth answer to learn from
+            skip_research: If True, skip the research phase
+            skip_explore: If True, skip the explore phase
+
+        Returns:
+            The agent's Python code solution
+        """
+        # Reset execution environment before learning
+        reset_execution_environment()
+
+        if self.verbose:
+            print("\n" + "=" * 70)
+            print("QAAgent - Learning Question (Three-Phase Approach)")
+            print("=" * 70 + "\n")
+
+        # Phase 1: Research (skip if no markdown files or explicitly requested)
+        research_info = None
+        if not skip_research and self.has_markdown_files:
+            research_info = self.research(question_data)
+        elif self.verbose and not self.has_markdown_files:
+            print("Research phase bypassed: no markdown files in data directory")
+
+        # Phase 2: Explore (find relevant files and columns)
+        explore_code = None
+        if not skip_explore:
+            explore_code = self.explore(question_data, research_info)
+
+        # Phase 3: Learn (find code that produces the ground truth answer)
+        answer = self._run_learner(question_data, gt_answer, research_info, explore_code)
+
+        if self.verbose:
+            print("\n" + "=" * 70)
+            print("LEARNING RESULT")
+            print("=" * 70)
+            print(f"Question: {question_data['question']}")
+            print(f"Ground Truth Answer: {gt_answer}")
+            print(f"Agent's Response: {answer}")
+            print("=" * 70)
+
+        return answer
+
+    def learn(
+        self,
+        question_id: int,
+        gt_answer: str,
+        skip_research: bool = False,
+        skip_explore: bool = True
+    ) -> str:
+        """
+        Learn from a question by its index, figuring out code that produces the ground truth answer.
+
+        Args:
+            question_id: Index of the question (0-based)
+            gt_answer: The ground truth answer to learn from
+            skip_research: If True, skip the research phase
+            skip_explore: If True, skip the explore phase
+
+        Returns:
+            The agent's Python code solution
+        """
+        question_data = self.get_question(question_id)
+        return self.learn_question(question_data, gt_answer, skip_research=skip_research, skip_explore=skip_explore)
+
     def set_file_structures(self, file_structures: str):
         """
         Set the pre-extracted file structures for prompt injection.
