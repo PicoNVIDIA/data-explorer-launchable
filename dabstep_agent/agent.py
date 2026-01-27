@@ -305,6 +305,16 @@ class DataScienceAgent:
                 tool_call_ids = {tc.get("id") for tc in msg.get("tool_calls", [])}
                 if tool_call_ids and tool_call_ids.issubset(failed_tool_call_ids):
                     continue  # Skip assistant message if all its tool calls failed
+                # Filter out failed tool calls from the assistant message
+                if tool_call_ids & failed_tool_call_ids:
+                    # Some tool calls failed, create a filtered copy
+                    filtered_tool_calls = [tc for tc in msg.get("tool_calls", [])
+                                           if tc.get("id") not in failed_tool_call_ids]
+                    if filtered_tool_calls:
+                        msg = dict(msg)  # Make a copy to avoid modifying original
+                        msg["tool_calls"] = filtered_tool_calls
+                    else:
+                        continue  # All tool calls were filtered out
             elif msg.get("role") == "user" and msg.get("content", "")==self.insert_prompt:
                 continue
             filtered_messages.append(msg)
