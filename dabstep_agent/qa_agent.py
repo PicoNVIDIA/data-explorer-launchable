@@ -342,12 +342,13 @@ Available documentation files:
 
         return response
 
-    def explore(self, question_data: Dict[str, Any]) -> Optional[str]:
+    def explore(self, question_data: Dict[str, Any], research_info: Optional[str] = None) -> Optional[str]:
         """
         Run the explore phase to find relevant data files and columns.
 
         Args:
             question_data: Dictionary containing the question
+            research_info: Optional documentation info from research phase
 
         Returns:
             Python code snippet showing how to read relevant files and columns,
@@ -363,10 +364,18 @@ Available documentation files:
         # Get data files info
         data_files_info = self._get_data_files_info()
 
+        # Build research info section
+        research_section = ""
+        if research_info:
+            research_section = f"""
+RELEVANT DOCUMENTATION (from research phase):
+{research_info}
+"""
+
         prompt = f"""QUESTION: {question_data['question']}
 
 {data_files_info}
-
+{research_section}
 YOUR TASK (DO NOT SOLVE THE QUESTION):
 1. Explore the data files to understand their structure
 2. Identify which file(s) are relevant to the question
@@ -519,7 +528,7 @@ INSTRUCTIONS:
         # Phase 2: Explore (find relevant files and columns)
         explore_code = None
         if not skip_explore:
-            explore_code = self.explore(question_data)
+            explore_code = self.explore(question_data, research_info)
 
         # Phase 3: Solve
         answer = self._run_solver(question_data, research_info, explore_code)
