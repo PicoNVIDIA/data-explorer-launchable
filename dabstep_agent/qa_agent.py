@@ -71,8 +71,8 @@ Use print() to show results. Preserve exact case of data values."""
         data_dir: str = "data/context",
         tasks_file: str = "data/tasks_dev.json",
         api_key: Optional[str] = None,
-        base_url: str = "https://integrate.api.nvidia.com/v1",
-        model: str = "nvidia/nemotron-3-nano-30b-a3b",
+        base_url: str = "https://inference-api.nvidia.com",
+        model: str = "openai/openai/gpt-5-mini",
         research_max_iterations: int = 10,
         explore_max_iterations: int = 100,
         solver_max_iterations: int = 10,
@@ -98,7 +98,7 @@ Use print() to show results. Preserve exact case of data values."""
         """
         self.data_dir = data_dir
         self.tasks_file = tasks_file
-        self.api_key = api_key or os.environ.get("NVIDIA_API_KEY")
+        self.api_key = api_key or os.environ.get("NV_INFER")
         self.base_url = base_url
         self.model = model
         self.research_max_iterations = research_max_iterations
@@ -181,7 +181,7 @@ Provide a FINAL Python code snippet in a ```python block that demonstrates:
             tools=[execute_python_code_tool],
             system_prompt=self.EXPLORE_SYSTEM_PROMPT,
             final_prompt=self.EXPLORE_FINAL_PROMPT,
-            insert_reminder=True
+            #insert_reminder=True
         )
         agent.reset_conversation()
         return agent
@@ -203,7 +203,7 @@ Provide a FINAL Python code snippet in a ```python block that answers this quest
             tools=[execute_python_code_tool],
             system_prompt=self.SOLVER_SYSTEM_PROMPT,
             final_prompt=SOLVER_FINAL_PROMPT,
-            insert_reminder=True
+            #insert_reminder=True
         )
         agent.reset_conversation()
         return agent
@@ -461,6 +461,7 @@ INSTRUCTIONS:
 2. Use the explore code above as a starting point for loading the relevant data
 3. Use execute_python_code to analyze the data and answer the question
 4. Provide the final answer following the guidelines exactly
+5. If "Not Applicable" is an option and you don't find definitive answer, reply "Not Applicable"
 """
 
         if self.verbose:
@@ -533,7 +534,7 @@ INSTRUCTIONS:
         self,
         question_id: int,
         skip_research: bool = False,
-        skip_explore: bool = False
+        skip_explore: bool = True
     ) -> str:
         """
         Solve a question by its index.
