@@ -655,17 +655,15 @@ INSTRUCTIONS:
 6. The final print() output must match the ground truth answer exactly
 7. Once you find the correct solution, provide:
    a) The complete Python code in a ```python block
-   b) A GENERAL RULE/INSIGHT in a ```rule block that can be applied to similar problems
+   b) A GENERAL RULE/INSIGHT in a ```rule block
 
-IMPORTANT: After finding the solution, extract a general rule or insight that explains the key technique used.
-The rule should be reusable for similar problems, not specific to this question.
+RULE EXTRACTION GUIDELINES:
+- Extract ONLY most critical, non-obvious insights
+- Focus on the KEY TECHNIQUE that made the solution work
+- DO NOT be too abstract - also show CONCRETE pandas code patterns
+- Use generic variable names ('column', 'value', 'df') but show real pandas syntax
 
-Example rule format:
-```rule
-Regarding [topic]:
-* [general principle]
-* Example: [concrete example showing before/after or how to apply]
-```
+
 """
 
         if self.verbose:
