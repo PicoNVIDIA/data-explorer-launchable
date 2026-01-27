@@ -650,6 +650,8 @@ INSTRUCTIONS:
 1. Use the provided documentation information above to understand the terms and definitions
 2. Use the explore code above as a starting point for loading the relevant data
 3. Your goal is to write Python code that produces EXACTLY the ground truth answer: {gt_answer}
+IMPORTANT: you can not hardcode {gt_answer} using print in your solution code. 
+You must derive the answer using legit code. If you can't get the correct answer, keep exploring.
 4. Use execute_python_code to analyze the data and verify your code produces the correct answer
 5. Think step by step about what data transformations, filters, or calculations are needed
 6. The final print() output must match the ground truth answer exactly
@@ -661,8 +663,8 @@ RULE EXTRACTION GUIDELINES:
 - Extract ONLY most critical, non-obvious insights
 - Focus on the KEY TECHNIQUE that made the solution work
 - DO NOT be too abstract - also show CONCRETE pandas code patterns
-- Use generic variable names ('column', 'value', 'df') but show real pandas syntax
-
+- Only use generic variable names ('column', 'value', 'df') but show real pandas syntax
+- DO NOT use real column names and values.
 
 """
 
