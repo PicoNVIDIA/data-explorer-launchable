@@ -79,6 +79,7 @@ Use print() to show results. Preserve exact case of data values."""
         verbose: bool = True,
         stream: bool = False,
         file_structures: Optional[str] = None,
+        default_search_terms: Optional[List[str]] = None,
     ):
         """
         Initialize the QAAgent.
@@ -95,6 +96,7 @@ Use print() to show results. Preserve exact case of data values."""
             verbose: Whether to print detailed execution logs
             stream: Whether to stream LLM outputs
             file_structures: Pre-extracted file structures for prompt injection
+            default_search_terms: Terms to always search in research phase (default: ["rule"])
         """
         self.data_dir = data_dir
         self.tasks_file = tasks_file
@@ -107,6 +109,7 @@ Use print() to show results. Preserve exact case of data values."""
         self.verbose = verbose
         self.stream = stream
         self.file_structures = file_structures
+        self.default_search_terms = default_search_terms if default_search_terms is not None else ["rule"]
 
         # Load questions
         self._questions: List[Dict[str, Any]] = []
@@ -165,7 +168,7 @@ Output Format:
 Provide a FINAL Python code snippet in a ```python block that demonstrates:
 - How to use pandas to read the relevant file(s)
 - How to select/print the relevant columns using pandas
-{INSIGHT}
+
 """
 
     def _create_explore_agent(self) -> DataScienceAgent:
@@ -310,10 +313,16 @@ Provide a FINAL Python code snippet in a ```python block that answers this quest
         # Build file paths list for all markdown files
         file_paths = "\n".join([f"- {md_file}" for md_file in self._md_files])
 
+        # Build default search terms instruction
+        default_terms_instruction = ""
+        if self.default_search_terms:
+            terms_list = ", ".join([f'"{t}"' for t in self.default_search_terms])
+            default_terms_instruction = f"\nREQUIRED: Always search for these terms first: {terms_list}. Then search for other relevant terms from the question."
+
         prompt = f"""QUESTION: {question_data['question'].split('?')[0]}
 
 Available documentation files:
-{file_paths}"""
+{file_paths}{default_terms_instruction}"""
 
         response = research_agent.process_prompt(prompt)
 
@@ -362,8 +371,6 @@ YOUR TASK (DO NOT SOLVE THE QUESTION):
 1. Explore the data files to understand their structure
 2. Identify which file(s) are relevant to the question
 3. Identify which column(s) in those files are relevant
-
-{self.INSIGHT}
 
 IMPORTANT: Do NOT try to answer the question. Only identify the relevant files and columns.
 
@@ -448,8 +455,6 @@ The following code shows how to access the relevant data:
 
 {data_files_section}
 {research_section}{explore_section}
-
-{self.INSIGHT}
 
 QUESTION: {question_data['question']}
 
