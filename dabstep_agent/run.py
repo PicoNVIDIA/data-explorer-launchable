@@ -36,7 +36,7 @@ def solve_single_task(task_id: int, file_structures: str = None) -> dict:
             tasks_file="data/tasks_dev.json",
             file_structures=file_structures,
             default_search_terms=['null'],
-            verbose=True
+            verbose=False
         )
 
         question = agent.get_question(task_id)
@@ -152,7 +152,7 @@ def solve_single(task_id: int):
         tasks_file="data/tasks_dev.json",
         file_structures=file_structures,
         default_search_terms=['null'],
-        verbose=True
+        verbose=False
     )
 
     return agent.solve(task_id)
@@ -169,10 +169,20 @@ def learn_single(task_id: int, gt_answer: str):
         tasks_file="data/tasks_dev.json",
         file_structures=file_structures,
         default_search_terms=['null'],
-        verbose=True
+        verbose=False
     )
 
-    return agent.learn(task_id, gt_answer)
+    answer, rule = agent.learn(task_id, gt_answer)
+
+    # Print extracted rule separately for easy access
+    if rule:
+        print("\n" + "=" * 70)
+        print("EXTRACTED RULE/INSIGHT:")
+        print("=" * 70)
+        print(rule)
+        print("=" * 70 + "\n")
+
+    return answer, rule
 
 
 if __name__ == "__main__":
