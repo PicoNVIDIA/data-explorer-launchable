@@ -35,6 +35,7 @@ def solve_single_task(task_id: int, file_structures: str = None) -> dict:
             data_dir="data/context",
             tasks_file="data/tasks_dev.json",
             file_structures=file_structures,
+            default_search_terms=['null'],
             verbose=True
         )
 
