@@ -225,11 +225,34 @@ Provide a FINAL Python code snippet in a ```python block that answers this quest
             return None
 
         # Look for ```python ... ``` blocks
-        pattern = r'```python\s*(.*?)(?:\s*```|\Z)' 
+        pattern = r'```python\s*(.*?)(?:\s*```|\Z)'
         matches = re.findall(pattern, text, re.DOTALL)
 
         if matches:
             # Return the last code block (most likely the final summary)
+            return matches[-1].strip()
+
+        return None
+
+    def _extract_rule(self, text: str) -> Optional[str]:
+        """
+        Extract rule/insight from a text response containing ```rule blocks.
+
+        Args:
+            text: The text response from the agent
+
+        Returns:
+            The extracted rule, or None if no rule block found
+        """
+        if not text:
+            return None
+
+        # Look for ```rule ... ``` blocks
+        pattern = r'```rule\s*(.*?)(?:\s*```|\Z)'
+        matches = re.findall(pattern, text, re.DOTALL)
+
+        if matches:
+            # Return the last rule block
             return matches[-1].strip()
 
         return None
@@ -570,7 +593,7 @@ INSTRUCTIONS:
         gt_answer: str,
         research_info: Optional[str] = None,
         explore_code: Optional[str] = None
-    ) -> str:
+    ) -> Tuple[str, Optional[str]]:
         """
         Run the learner phase to figure out Python code that produces the ground truth answer.
 
@@ -581,7 +604,7 @@ INSTRUCTIONS:
             explore_code: Optional Python code from explore phase showing relevant files/columns
 
         Returns:
-            The agent's Python code solution that produces the ground truth answer
+            Tuple of (agent's response, extracted rule/insight)
         """
         if self.verbose:
             print("\n" + "=" * 70)
@@ -630,7 +653,19 @@ INSTRUCTIONS:
 4. Use execute_python_code to analyze the data and verify your code produces the correct answer
 5. Think step by step about what data transformations, filters, or calculations are needed
 6. The final print() output must match the ground truth answer exactly
-7. Once you find the correct solution, provide the complete Python code
+7. Once you find the correct solution, provide:
+   a) The complete Python code in a ```python block
+   b) A GENERAL RULE/INSIGHT in a ```rule block that can be applied to similar problems
+
+IMPORTANT: After finding the solution, extract a general rule or insight that explains the key technique used.
+The rule should be reusable for similar problems, not specific to this question.
+
+Example rule format:
+```rule
+Regarding [topic]:
+* [general principle]
+* Example: [concrete example showing before/after or how to apply]
+```
 """
 
         if self.verbose:
@@ -643,10 +678,13 @@ INSTRUCTIONS:
 
         answer = solver_agent.process_prompt(prompt)
 
+        # Extract the rule from the response
+        rule = self._extract_rule(answer)
+
         # Save learner agent history
         solver_agent.save_messages("learner_history.json")
 
-        return answer
+        return answer, rule
 
     def learn_question(
         self,
@@ -654,7 +692,7 @@ INSTRUCTIONS:
         gt_answer: str,
         skip_research: bool = False,
         skip_explore: bool = False
-    ) -> str:
+    ) -> Tuple[str, Optional[str]]:
         """
         Learn from a question by figuring out the code that produces the ground truth answer.
 
@@ -665,7 +703,7 @@ INSTRUCTIONS:
             skip_explore: If True, skip the explore phase
 
         Returns:
-            The agent's Python code solution
+            Tuple of (agent's response, extracted rule/insight)
         """
         # Reset execution environment before learning
         reset_execution_environment()
@@ -688,7 +726,7 @@ INSTRUCTIONS:
             explore_code = self.explore(question_data, research_info)
 
         # Phase 3: Learn (find code that produces the ground truth answer)
-        answer = self._run_learner(question_data, gt_answer, research_info, explore_code)
+        answer, rule = self._run_learner(question_data, gt_answer, research_info, explore_code)
 
         if self.verbose:
             print("\n" + "=" * 70)
@@ -697,9 +735,12 @@ INSTRUCTIONS:
             print(f"Question: {question_data['question']}")
             print(f"Ground Truth Answer: {gt_answer}")
             print(f"Agent's Response: {answer}")
+            print("-" * 70)
+            print("EXTRACTED RULE:")
+            print(rule if rule else "(No rule extracted)")
             print("=" * 70)
 
-        return answer
+        return answer, rule
 
     def learn(
         self,
@@ -707,7 +748,7 @@ INSTRUCTIONS:
         gt_answer: str,
         skip_research: bool = False,
         skip_explore: bool = True
-    ) -> str:
+    ) -> Tuple[str, Optional[str]]:
         """
         Learn from a question by its index, figuring out code that produces the ground truth answer.
 
@@ -718,7 +759,7 @@ INSTRUCTIONS:
             skip_explore: If True, skip the explore phase
 
         Returns:
-            The agent's Python code solution
+            Tuple of (agent's response, extracted rule/insight)
         """
         question_data = self.get_question(question_id)
         return self.learn_question(question_data, gt_answer, skip_research=skip_research, skip_explore=skip_explore)
