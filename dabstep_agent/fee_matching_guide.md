@@ -1,14 +1,19 @@
-# Fee Matching Rules Reference
+# Transaction Fee Calculation Guide
 
-Quick reference for matching payment transactions to fee rules.
+Each payment transaction incurs fees based on rules in `fees.json`. To calculate a transaction's fee:
 
-## Data Files
+1. **Find matching fee rules** - check transaction fields, merchant attributes, and monthly metrics against each rule's criteria
+2. **Calculate fee for each match** - `fixed_amount + (rate * transaction_value / 10000)`
+3. **Aggregate** - select min, max, or sum depending on the question
 
-| File | Description |
-|------|-------------|
-| `data/payments.csv` | Transaction data (card_scheme, is_credit, eur_amount, issuing_country, acquirer_country, aci, etc.) |
-| `data/fees.json` | Fee rules with matching criteria and fee calculation parameters |
-| `data/merchant_data.json` | Merchant info (account_type, capture_delay, merchant_category_code) |
+## Data Required
+
+| Source | Fields Used |
+|--------|-------------|
+| `payments.csv` (transaction) | card_scheme, is_credit, aci, eur_amount, issuing_country, acquirer_country, has_fraudulent_dispute |
+| `merchant_data.json` (merchant) | account_type, merchant_category_code, capture_delay |
+| `payments.csv` (aggregated) | monthly_volume (sum of eur_amount), fraud_pct (fraud_volume / total_volume * 100) |
+| `fees.json` | fee rules with matching criteria and fee parameters (fixed_amount, rate) |
 
 ---
 
@@ -32,17 +37,17 @@ def rule_matches(fee, card_scheme, txn, merchant, monthly_volume, fraud_pct):
     if fee['merchant_category_code'] and merchant['merchant_category_code'] not in fee['merchant_category_code']:
         return False
 
-    # 4. Is Credit - null matches all
-    if fee['is_credit'] is not None and fee['is_credit'] != txn['is_credit']:
+    # 4. Is Credit - null/nan matches all
+    if not pd.isna(fee['is_credit']) and bool(fee['is_credit']) != bool(txn['is_credit']):
         return False
 
     # 5. ACI - empty list matches all
     if fee['aci'] and txn['aci'] not in fee['aci']:
         return False
 
-    # 6. Intracountry - null matches all (1.0 = domestic, 0.0 = international)
+    # 6. Intracountry - null/nan matches all (1.0 = domestic, 0.0 = international)
     intracountry = 1.0 if txn['issuing_country'] == txn['acquirer_country'] else 0.0
-    if fee['intracountry'] is not None and fee['intracountry'] != intracountry:
+    if not pd.isna(fee['intracountry']) and fee['intracountry'] != intracountry:
         return False
 
     # 7. Capture Delay - null matches all
