@@ -4,7 +4,7 @@ import json
 import os
 from typing import Optional, List
 from agent import DataScienceAgent
-from tools import execute_python_code_tool, reset_execution_environment
+from tools import execute_python_code_tool, read_doc_tool, reset_execution_environment
 
 
 class SimpleQAAgent:
@@ -15,6 +15,7 @@ Write complete, executable Python code to answer the question.
 IMPORTANT: Do NOT assume variables exist. Always import libraries and load data files.
 Use pandas to explore tabular data.
 Use print() to show results. Preserve exact case of data values.
+If you need guidance on fee matching logic, use read_doc to read "./dabstep_agent/fee_matching_guide.md".
 """
 
     def __init__(
@@ -60,7 +61,7 @@ Use print() to show results. Preserve exact case of data values.
             max_iterations=self.max_iterations,
             model=self.model,
             verbose=self.verbose,
-            tools=[execute_python_code_tool],
+            tools=[execute_python_code_tool, read_doc_tool],
             system_prompt=self.SYSTEM_PROMPT+'\nExamples\n'+examples,
         )
         agent.reset_conversation()

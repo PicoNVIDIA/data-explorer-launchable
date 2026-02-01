@@ -148,6 +148,7 @@ def solve_task(task_id: int, tasks_file: str = "data/tasks_dev.json"):
         data_dir="data/context",
         tasks_file=tasks_file,
         file_structures=file_structures,
+        max_iterations=100,
         verbose=True
     )
     return agent.solve(task_id)
