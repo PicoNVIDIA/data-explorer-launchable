@@ -196,4 +196,8 @@ fee = fixed_amount + (rate * transaction_value / 10000)
 
 ## Rule Selection
 
-When multiple rules match, select the one with the **lowest calculated fee**.
+When multiple rules match a transaction, the aggregation method depends on the question:
+- **Minimize fees:** Select the rule with the **lowest** calculated fee
+- **Maximize fees:** SUM all matching fees 
+
+Always read the question carefully to determine the appropriate approach.
