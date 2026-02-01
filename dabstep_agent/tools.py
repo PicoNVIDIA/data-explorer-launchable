@@ -17,31 +17,13 @@ from retriever import search_doc, search_doc_tool
 # PERSISTENT EXECUTION ENVIRONMENT
 # =============================================================================
 
-# Flag to track if GPU acceleration has been initialized
-_GPU_INITIALIZED = False
-
 # Persistent namespace that carries over between executions
 PERSISTENT_NAMESPACE = {}
-
-
-def _initialize_gpu_pandas():
-    """Initialize GPU-accelerated pandas once at module level."""
-    global _GPU_INITIALIZED
-    if not _GPU_INITIALIZED:
-        try:
-            import cudf.pandas
-            cudf.pandas.install()
-            _GPU_INITIALIZED = True
-            print("[GPU Acceleration] cudf.pandas initialized successfully")
-        except Exception as e:
-            print(f"[GPU Acceleration] Warning: Failed to initialize cudf.pandas: {e}")
-            print("[GPU Acceleration] Falling back to CPU mode")
 
 
 def _initialize_namespace():
     """Initialize or reset the persistent namespace with pandas."""
     global PERSISTENT_NAMESPACE
-    # Import pandas AFTER cudf.pandas.install() has been called
     import pandas as pd
     import matplotlib.pyplot as plt
     PERSISTENT_NAMESPACE = {'pd': pd, 'plt': plt}
@@ -49,18 +31,14 @@ def _initialize_namespace():
 
 def reset_execution_environment():
     """Reset the persistent execution environment, clearing all variables."""
-    global _GPU_INITIALIZED
     _initialize_namespace()
     return {
         "success": True,
-        "message": "Execution environment reset. All variables cleared.",
-        "gpu_mode": _GPU_INITIALIZED
+        "message": "Execution environment reset. All variables cleared."
     }
 
 
-# Initialize GPU acceleration FIRST, then import pandas
-_initialize_gpu_pandas()
-# Now initialize the namespace with GPU-accelerated pandas
+# Initialize the namespace
 _initialize_namespace()
 
 
@@ -112,30 +90,24 @@ def get_file_header(file_path: str, num_lines: int = 10, verbose: bool = True) -
         }
 
 
-def execute_python_code(code: str, use_gpu: bool = True, verbose: bool = True) -> dict:
+def execute_python_code(code: str, verbose: bool = True) -> dict:
     """
-    Execute Python code using pandas with GPU acceleration.
+    Execute Python code using pandas.
 
     Variables persist between executions in the PERSISTENT_NAMESPACE,
     allowing dataframes to be reused across multiple calls.
 
-    Note: GPU acceleration via cudf.pandas is initialized at module load time
-    (before pandas import) and applies to all executions if available.
-
     Args:
         code: Python code string to execute
-        use_gpu: Kept for API compatibility. GPU is initialized at module load.
         verbose: If True, print execution details and output. Default True.
 
     Returns:
         Dictionary with execution results, timing, dataframe tracking, and any errors
     """
-    global PERSISTENT_NAMESPACE, _GPU_INITIALIZED
-
-    mode = "gpu_accelerated" if _GPU_INITIALIZED else "cpu"
+    global PERSISTENT_NAMESPACE
 
     if verbose:
-        print(f"\n[Executing Python Code - {'GPU Accelerated' if _GPU_INITIALIZED else 'CPU'} Mode]")
+        print(f"\n[Executing Python Code]")
         print("-" * 60)
         print(code)
         print("-" * 60)
@@ -179,18 +151,16 @@ def execute_python_code(code: str, use_gpu: bool = True, verbose: bool = True) -
 
         return {
             "success": True,
-            "mode": mode,
             "execution_time_seconds": round(execution_time, 4),
             "stdout": stdout_output,
             "stderr": stderr_output,
             "dataframes": dataframes_after,
             "dataframe_changes": dataframe_changes,
-            "message": f"Code executed successfully on {'GPU' if _GPU_INITIALIZED else 'CPU'} in {execution_time:.4f} seconds"
+            "message": f"Code executed successfully in {execution_time:.4f} seconds"
         }
     except Exception as e:
         return {
             "success": False,
-            "mode": mode,
             "error": str(e),
             "error_type": type(e).__name__
         }
@@ -284,6 +254,42 @@ def execute_bash_command(command: str, timeout: int = 60, verbose: bool = True, 
             "success": False,
             "error": f"Command timed out after {timeout} seconds",
             "error_type": "TimeoutExpired"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
+
+
+def read_doc(file_path: str, verbose: bool = True) -> dict:
+    """
+    Read the content of a file and return it.
+
+    Args:
+        file_path: Path to the file to read
+        verbose: If True, print the output. Default True.
+
+    Returns:
+        Dictionary with file content
+    """
+    if verbose:
+        print(f"\n[Reading file: {file_path}]")
+        print("-" * 60)
+
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+
+        if verbose:
+            print(content)
+            print("-" * 60)
+
+        return {
+            "success": True,
+            "file_path": file_path,
+            "content": content
         }
     except Exception as e:
         return {
@@ -391,18 +397,13 @@ execute_python_code_tool = {
     "type": "function",
     "function": {
         "name": "execute_python_code",
-        "description": "Execute Python pandas code with optional GPU acceleration. By default, uses GPU-accelerated execution via NVIDIA cudf.pandas for better performance. The pandas library (pd) is already imported. IMPORTANT: Variables persist between executions - if you've previously loaded data into a variable like 'df', it will still be available in subsequent calls. This allows you to build on previous work without re-reading data.",
+        "description": "Execute Python pandas code. The pandas library (pd) is already imported. IMPORTANT: Variables persist between executions - if you've previously loaded data into a variable like 'df', it will still be available in subsequent calls. This allows you to build on previous work without re-reading data.",
         "parameters": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "string",
                     "description": "The Python pandas code to execute. Use print() to output results. You can reference variables created in previous executions."
-                },
-                "use_gpu": {
-                    "type": "boolean",
-                    "description": "If true (default), use GPU acceleration.",
-                    "default": True
                 }
             },
             "required": ["code"]
@@ -433,6 +434,24 @@ execute_bash_command_tool = {
     }
 }
 
+read_doc_tool = {
+    "type": "function",
+    "function": {
+        "name": "read_doc",
+        "description": "Read the entire content of a file and return it. Use this to read text files, documentation, configuration files, etc.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "The path to the file to read"
+                }
+            },
+            "required": ["file_path"]
+        }
+    }
+}
+
 
 # =============================================================================
 # TOOL REGISTRY
@@ -445,6 +464,7 @@ TOOL_FUNCTIONS = {
     "execute_bash_command": execute_bash_command,
     "reset_execution_environment": reset_execution_environment,
     "search_doc": search_doc,
+    "read_doc": read_doc,
 }
 
 # List of all tool definitions
@@ -453,6 +473,7 @@ ALL_TOOLS = [
     execute_python_code_tool,
     execute_bash_command_tool,
     search_doc_tool,
+    read_doc_tool,
 ]
 
 
