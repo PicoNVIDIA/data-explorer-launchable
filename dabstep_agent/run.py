@@ -2,6 +2,7 @@ import json
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from qa_agent import QAAgent, load_question
+from simple_qa_agent import SimpleQAAgent
 from extract_structure_example import (
     create_structure_extraction_agent,
     extract_all_structures,
@@ -27,8 +28,8 @@ def extract_file_structures_once(data_dir: str = "data/context") -> str:
     return _FILE_STRUCTURES
 
 
-def solve_single_task(task_id: int, file_structures: str = None, tasks_file: str = "data/tasks_dev.json") -> dict:
-    """Solve a single task using QAAgent and return the result."""
+def _solve_task_worker(task_id: int, file_structures: str = None, tasks_file: str = "data/tasks_dev.json") -> dict:
+    """Internal worker for batch/parallel execution. Returns structured result dict with error handling."""
     try:
         # Create QAAgent instance
         agent = QAAgent(
@@ -89,7 +90,7 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None, task
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks with pre-extracted structures
         future_to_task = {
-            executor.submit(solve_single_task, task_id, file_structures, tasks_file): task_id
+            executor.submit(_solve_task_worker, task_id, file_structures, tasks_file): task_id
             for task_id in range(num_tasks)
         }
 
@@ -140,20 +141,15 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None, task
     return output_data
 
 
-def solve_single(task_id: int, tasks_file: str = "data/tasks_dev.json"):
-    """Solve a single task using QAAgent."""
-    # Pre-extract file structures
+def solve_task(task_id: int, tasks_file: str = "data/tasks_dev.json"):
+    """Solve a single task using SimpleQAAgent. CLI entry point."""
     file_structures = extract_file_structures_once()
-
-    # Create and use QAAgent
-    agent = QAAgent(
+    agent = SimpleQAAgent(
         data_dir="data/context",
         tasks_file=tasks_file,
         file_structures=file_structures,
-        default_search_terms=['null'],
         verbose=True
     )
-
     return agent.solve(task_id)
 
 
@@ -190,7 +186,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DABStep Task Solver")
     parser.add_argument("--parallel", action="store_true", help="Run all tasks in parallel")
     parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers (default: 4)")
-    parser.add_argument("--task", type=int, default=None, help="Solve a single task by ID")
+    parser.add_argument("--task", type=int, default=None, help="Solve a single task by row index")
+    parser.add_argument("--task-id", type=str, default=None, help="Solve a single task by task_id field")
     parser.add_argument("--output", type=str, default=None, help="Output file for results")
     parser.add_argument("--learn", action="store_true", help="Learn mode: find code that produces ground truth answer")
     parser.add_argument("--gt-answer", type=str, default=None, help="Ground truth answer for learn mode")
@@ -198,27 +195,42 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Helper function to find row index by task_id
+    def find_task_index_by_id(task_id: str, tasks_file: str) -> int:
+        with open(tasks_file, 'r') as f:
+            questions = json.load(f)
+        for idx, q in enumerate(questions):
+            if q.get("task_id") == task_id:
+                return idx
+        raise ValueError(f"Task with task_id '{task_id}' not found in {tasks_file}")
+
+    # Resolve task index from --task-id if provided
+    task_index = args.task
+    if args.task_id is not None:
+        task_index = find_task_index_by_id(args.task_id, args.input)
+        print(f"Found task_id '{args.task_id}' at row index {task_index}")
+
     if args.parallel:
         solve_all_tasks_parallel(max_workers=args.workers, output_file=args.output, tasks_file=args.input)
     elif args.learn:
-        if args.task is None:
-            print("Error: --learn requires --task to specify the task ID")
+        if task_index is None:
+            print("Error: --learn requires --task or --task-id to specify the task")
             exit(1)
         if args.gt_answer is None:
             # Try to get gt_answer from the task's answer field
             with open(args.input, 'r') as f:
                 questions = json.load(f)
-            if args.task < len(questions) and "answer" in questions[args.task]:
-                gt_answer = questions[args.task]["answer"]
+            if task_index < len(questions) and "answer" in questions[task_index]:
+                gt_answer = questions[task_index]["answer"]
                 print(f"Using answer from task file: {gt_answer}")
             else:
                 print("Error: --learn requires --gt-answer or task must have 'answer' field")
                 exit(1)
         else:
             gt_answer = args.gt_answer
-        learn_single(args.task, gt_answer, tasks_file=args.input)
-    elif args.task is not None:
-        solve_single(args.task, tasks_file=args.input)
+        learn_single(task_index, gt_answer, tasks_file=args.input)
+    elif task_index is not None:
+        solve_task(task_index, tasks_file=args.input)
     else:
         # Default: solve task 1
-        solve_single(1, tasks_file=args.input)
+        solve_task(1, tasks_file=args.input)
