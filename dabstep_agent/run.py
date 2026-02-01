@@ -27,16 +27,16 @@ def extract_file_structures_once(data_dir: str = "data/context") -> str:
     return _FILE_STRUCTURES
 
 
-def solve_single_task(task_id: int, file_structures: str = None) -> dict:
+def solve_single_task(task_id: int, file_structures: str = None, tasks_file: str = "data/tasks_dev.json") -> dict:
     """Solve a single task using QAAgent and return the result."""
     try:
         # Create QAAgent instance
         agent = QAAgent(
             data_dir="data/context",
-            tasks_file="data/tasks_dev.json",
+            tasks_file=tasks_file,
             file_structures=file_structures,
             default_search_terms=['null'],
-            verbose=False
+            verbose=True
         )
 
         question = agent.get_question(task_id)
@@ -60,7 +60,7 @@ def solve_single_task(task_id: int, file_structures: str = None) -> dict:
         }
 
 
-def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
+def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None, tasks_file: str = "data/tasks_dev.json"):
     """
     Solve all dabstep tasks in parallel and write results to a file.
 
@@ -72,8 +72,7 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
     file_structures = extract_file_structures_once()
 
     # Load all questions to get the count
-    dev_jsonl = "data/tasks_dev.json"
-    with open(dev_jsonl, 'r') as f:
+    with open(tasks_file, 'r') as f:
         questions = json.load(f)
 
     num_tasks = len(questions)
@@ -90,7 +89,7 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks with pre-extracted structures
         future_to_task = {
-            executor.submit(solve_single_task, task_id, file_structures): task_id
+            executor.submit(solve_single_task, task_id, file_structures, tasks_file): task_id
             for task_id in range(num_tasks)
         }
 
@@ -141,7 +140,7 @@ def solve_all_tasks_parallel(max_workers: int = 4, output_file: str = None):
     return output_data
 
 
-def solve_single(task_id: int):
+def solve_single(task_id: int, tasks_file: str = "data/tasks_dev.json"):
     """Solve a single task using QAAgent."""
     # Pre-extract file structures
     file_structures = extract_file_structures_once()
@@ -149,16 +148,16 @@ def solve_single(task_id: int):
     # Create and use QAAgent
     agent = QAAgent(
         data_dir="data/context",
-        tasks_file="data/tasks_dev.json",
+        tasks_file=tasks_file,
         file_structures=file_structures,
         default_search_terms=['null'],
-        verbose=False
+        verbose=True
     )
 
     return agent.solve(task_id)
 
 
-def learn_single(task_id: int, gt_answer: str):
+def learn_single(task_id: int, gt_answer: str, tasks_file: str = "data/tasks_dev.json"):
     """Learn from a single task using QAAgent with ground truth answer."""
     # Pre-extract file structures
     file_structures = extract_file_structures_once()
@@ -166,7 +165,7 @@ def learn_single(task_id: int, gt_answer: str):
     # Create and use QAAgent
     agent = QAAgent(
         data_dir="data/context",
-        tasks_file="data/tasks_dev.json",
+        tasks_file=tasks_file,
         file_structures=file_structures,
         default_search_terms=['null'],
         verbose=False
@@ -195,18 +194,19 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default=None, help="Output file for results")
     parser.add_argument("--learn", action="store_true", help="Learn mode: find code that produces ground truth answer")
     parser.add_argument("--gt-answer", type=str, default=None, help="Ground truth answer for learn mode")
+    parser.add_argument("--input", type=str, default="data/tasks_dev.json", help="Path to input tasks JSON file (default: data/tasks_dev.json)")
 
     args = parser.parse_args()
 
     if args.parallel:
-        solve_all_tasks_parallel(max_workers=args.workers, output_file=args.output)
+        solve_all_tasks_parallel(max_workers=args.workers, output_file=args.output, tasks_file=args.input)
     elif args.learn:
         if args.task is None:
             print("Error: --learn requires --task to specify the task ID")
             exit(1)
         if args.gt_answer is None:
             # Try to get gt_answer from the task's answer field
-            with open("data/tasks_dev.json", 'r') as f:
+            with open(args.input, 'r') as f:
                 questions = json.load(f)
             if args.task < len(questions) and "answer" in questions[args.task]:
                 gt_answer = questions[args.task]["answer"]
@@ -216,9 +216,9 @@ if __name__ == "__main__":
                 exit(1)
         else:
             gt_answer = args.gt_answer
-        learn_single(args.task, gt_answer)
+        learn_single(args.task, gt_answer, tasks_file=args.input)
     elif args.task is not None:
-        solve_single(args.task)
+        solve_single(args.task, tasks_file=args.input)
     else:
         # Default: solve task 1
-        solve_single(1)
+        solve_single(1, tasks_file=args.input)
