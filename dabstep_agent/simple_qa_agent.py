@@ -14,7 +14,9 @@ class SimpleQAAgent:
 
 Use execute_python_code tool to write code and answer the question.
 1. Try to write a solution in one shot
-2. Don't print in the python code unless it is necessary
+2. Don't print in the python code unless necessary
+3. Don't print intermediate results unless necessary
+4. When the results are ready, stop calling tools and return final output 
 
 Output Format:
 {
