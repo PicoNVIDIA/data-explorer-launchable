@@ -137,7 +137,7 @@ def format_structures_for_prompt(structures: Dict[str, dict]) -> str:
             columns = structure.get("columns", [])
             sample = structure.get("sample_row", {})
             lines.append(f"- {filename} (CSV):")
-            lines.append(f"    Columns: {', '.join(columns)}")
+            #lines.append(f"    Columns: {', '.join(columns)}")
             lines.append(f"    Sample row: {json.dumps(sample, default=str)}")
         elif file_type == "json":
             keys = structure.get("keys", [])

@@ -78,6 +78,12 @@ QUESTION: {question['question']}
 
 GUIDELINES: {question.get('guidelines', 'N/A')}
 
-Use execute_python_code to analyze the data and answer the question."""
+Use execute_python_code tool to write code and answer the question.
+1. Try to write a solution in one shot
+2. Only explore when is error
+3. when exploring, don't print the entire dataframe or object, print the header or sample
+4. Don't over explore. Once the answer is ready, stop calling tools and reply with the final answer
+5. The final answer should be direct and short, exactly as the GUIDELINES. Don't add additional analysis
+"""
 
         return agent.process_prompt(prompt)
