@@ -10,12 +10,17 @@ from tools import execute_python_code_tool, read_doc_tool, reset_execution_envir
 class SimpleQAAgent:
     """A minimal QA agent that directly solves questions using code execution."""
 
-    SYSTEM_PROMPT = """You are a data science expert.
-Write complete, executable Python code to answer the question.
-IMPORTANT: Do NOT assume variables exist. Always import libraries and load data files.
-Use pandas to explore tabular data.
-Use print() to show results. Preserve exact case of data values.
+    SYSTEM_PROMPT = """You are a data science expert. The task is tabular data QA.
+
+Use execute_python_code tool to write code and answer the question.
+1. Try to write a solution in one shot
+2. Only explore when is error
+3. when exploring, don't print the entire dataframe or object, print the header or sample
+4. Don't over explore. Once the answer is ready, stop calling tools and reply with the final answer
+5. The final answer should be direct and short, exactly as the GUIDELINES. Don't add additional analysis
+
 If the question is about matching fee with merchent and transaction, use read_doc tool to read "./dabstep_agent/fee_matching_guide.md".
+
 """
 
     def __init__(
@@ -66,7 +71,7 @@ If the question is about matching fee with merchent and transaction, use read_do
             model=self.model,
             verbose=self.verbose,
             tools=[execute_python_code_tool, read_doc_tool],
-            system_prompt=self.SYSTEM_PROMPT+'\nExamples\n'+examples,
+            system_prompt=self.SYSTEM_PROMPT,
         )
         agent.reset_conversation()
 
@@ -74,16 +79,13 @@ If the question is about matching fee with merchent and transaction, use read_do
 
 {self._get_data_files_info()}
 
+Examples:
+{examples}
+
 QUESTION: {question['question']}
 
 GUIDELINES: {question.get('guidelines', 'N/A')}
 
-Use execute_python_code tool to write code and answer the question.
-1. Try to write a solution in one shot
-2. Only explore when is error
-3. when exploring, don't print the entire dataframe or object, print the header or sample
-4. Don't over explore. Once the answer is ready, stop calling tools and reply with the final answer
-5. The final answer should be direct and short, exactly as the GUIDELINES. Don't add additional analysis
 """
 
         return agent.process_prompt(prompt)
