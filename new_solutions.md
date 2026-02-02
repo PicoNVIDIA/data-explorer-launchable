@@ -39,7 +39,7 @@ def find_matching_fees(fees: List[Dict], card_scheme: str, account_type: str, mc
 
 ---
 
-## Task 5: Which issuing country has the highest number of transactions?
+## Which issuing country has the highest number of transactions?
 
 **Data Source:** `data/context/payments.csv` → `issuing_country` column
 
@@ -54,7 +54,7 @@ df['issuing_country'].value_counts().idxmax()
 
 ---
 
-## Task 49: What is the top country (ip_country) for fraud?
+## What is the top country (ip_country) for fraud?
 
 **Data Source:** `data/context/payments.csv` → `ip_country`, `eur_amount`, `has_fraudulent_dispute` columns
 
@@ -74,7 +74,7 @@ total_vol = df.groupby('ip_country')['eur_amount'].sum()
 
 ---
 
-## Task 70: Is Martinis_Fine_Steakhouse in danger of getting a high-fraud rate fine?
+## Is Martinis_Fine_Steakhouse in danger of getting a high-fraud rate fine?
 
 **Data Source:** `data/context/manual.md`
 
@@ -88,7 +88,7 @@ total_vol = df.groupby('ip_country')['eur_amount'].sum()
 
 ---
 
-## Task 1273: For credit transactions, what would be the average fee that GlobalCard would charge for 10 EUR?
+## For credit transactions, what would be the average fee that GlobalCard would charge for 10 EUR?
 
 **Data Source:** `data/context/fees.json`
 
@@ -106,7 +106,7 @@ mask = (fees['card_scheme'] == 'GlobalCard') & ((fees['is_credit'].isna()) | (fe
 
 ---
 
-## Task 1305: Average GlobalCard fee for account type H, MCC 5812, 10 EUR
+## Average GlobalCard fee for account type H, MCC 5812, 10 EUR
 
 **Data Source:** `data/context/fees.json`, `data/context/merchant_category_codes.csv`
 
@@ -127,7 +127,7 @@ avg = sum(calculated_fees) / len(calculated_fees)
 
 ---
 
-## Task 1464: Fee IDs for account_type=R and aci=B
+## Fee IDs for account_type=R and aci=B
 
 **Data Source:** `data/context/fees.json`
 
@@ -144,7 +144,7 @@ matching = sorted([f['ID'] for f in load_fees()
 
 ---
 
-## Task 1681: Fee IDs for Belles_cookbook_store on day 10 of January 2023
+## Fee IDs for Belles_cookbook_store on day 10 of January 2023
 
 **Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`
 
@@ -181,50 +181,7 @@ ids = sorted(ids)
 
 ---
 
-## Task 1753: Fee IDs for Belles_cookbook_store in March 2023
-
-**Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`, `data/context/acquirer_countries.csv`
-
-**Approach:**
-1. Get merchant info and acquirer country for intracountry flag
-2. Calculate March monthly metrics
-3. For each fee, check merchant-level criteria first
-4. Then verify at least ONE transaction matches ALL transaction-level criteria together
-
-**Code:**
-```python
-from helper import (
-    load_fees, load_payments, load_merchants, load_acquirer_countries,
-    matches_list_field, matches_bool_field, matches_capture_delay,
-    parse_volume_range, parse_fraud_range, filter_merchant_transactions, calculate_monthly_metrics
-)
-
-fees, payments, merchants = load_fees(), load_payments(), load_merchants()
-m = next(m for m in merchants if m['merchant'] == 'Belles_cookbook_store')
-acq_country = load_acquirer_countries()[load_acquirer_countries()['acquirer'].isin(m['acquirer'])]['country_code'].values[0]
-
-txns = filter_merchant_transactions(payments, 'Belles_cookbook_store', 2023, 3).copy()
-metrics = calculate_monthly_metrics(txns)
-txns['intracountry'] = txns['issuing_country'] == acq_country
-
-applicable = []
-for fee in fees:
-    # Check merchant-level criteria
-    if not matches_list_field(fee.get('account_type'), m['account_type']): continue
-    if not matches_list_field(fee.get('merchant_category_code'), m['merchant_category_code']): continue
-    if not matches_capture_delay(fee.get('capture_delay'), m['capture_delay']): continue
-    # Check volume/fraud ranges...
-
-    # Filter transactions by transaction-level criteria
-    filtered = txns[txns['card_scheme'] == fee['card_scheme']]
-    # Apply is_credit, aci, intracountry filters...
-    if len(filtered) > 0:
-        applicable.append(fee['ID'])
-```
-
----
-
-## Task 1871: Delta if fee ID=384 rate changed to 1
+## Fee delta if fee ID=384 rate changed to 1
 
 **Data Source:** `data/context/payments.csv`, `data/context/fees.json`
 
@@ -251,7 +208,7 @@ delta = -Decimal('13') * total / Decimal('10000')
 
 ---
 
-## Task 2697: Optimal ACI for fraudulent transactions at Belles_cookbook_store
+## For Belles_cookbook_store in January, which ACI should fraudulent transactions be shifted to minimize fees?
 
 **Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`
 
@@ -279,16 +236,19 @@ metrics = calculate_monthly_metrics(txns)
 vol, fraud_lvl = metrics['volume'], metrics['fraud_rate_pct']
 
 results = {}
-for aci in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
-    total, count = 0.0, 0
+for aci in payments.aci.unique():
+    total_sum, count = 0.0, 0
     for _, t in fraud_txns.iterrows():
         matches = find_matching_fees(fees, t['card_scheme'], acct, mcc, t['is_credit'], aci,
                                       t['intracountry'], cap_del, vol, fraud_lvl)
         if matches:
-            total += min(calculate_fee(f['fixed_amount'], f['rate'], t['eur_amount']) for f in matches)
+            # when there are multiple matching fees
+            # aggregate them
+            matched_fees = [calculate_fee(f['fixed_amount'], f['rate'], t['eur_amount']) for f in matches]
+            total_sum += sum(matched_fees)
             count += 1
     if count > 0:
-        results[aci] = round(total, 2)
+        results[aci] = round(total_sum, 2)
 
 best = min(results, key=results.get)
 ```
