@@ -19,8 +19,11 @@ Use execute_python_code tool to write code and answer the question.
 4. Don't over explore. Once the answer is ready, stop calling tools and reply with the final answer
 5. The final answer should be direct and short, exactly as the GUIDELINES. Don't add additional analysis
 
-If the question is about matching fee with merchent and transaction, use read_doc tool to read "./dabstep_agent/fee_matching_guide.md".
-
+Output Format:
+{
+    "agent_answer": your_answer based on provided GUIDELINES
+}
+Don't write anything else!
 """
 
     def __init__(
@@ -60,7 +63,7 @@ If the question is about matching fee with merchent and transaction, use read_do
         reset_execution_environment()
         question = self.get_question(question_id)
 
-        with open('solutions.md') as f:
+        with open('new_solutions.md') as f:
             examples = f.read()
         
 
@@ -70,7 +73,7 @@ If the question is about matching fee with merchent and transaction, use read_do
             max_iterations=self.max_iterations,
             model=self.model,
             verbose=self.verbose,
-            tools=[execute_python_code_tool, read_doc_tool],
+            tools=[execute_python_code_tool],
             system_prompt=self.SYSTEM_PROMPT,
         )
         agent.reset_conversation()
@@ -79,6 +82,8 @@ If the question is about matching fee with merchent and transaction, use read_do
 
 {self._get_data_files_info()}
 
+A helper python script is provided. "helper.py". Import functions from it in your code if needed.
+Carefully read the examples below
 Examples:
 {examples}
 
