@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def normalize_answer_for_comparison(answer: str) -> str:
-    """Normalize an answer for comparison. If it's a comma-separated list of numbers, sort them."""
+def extract_agent_answer(answer: str) -> str:
+    """Extract the agent_answer value from a response (may be embedded in text)."""
     import re
     if answer is None:
         return ""
@@ -22,15 +22,20 @@ def normalize_answer_for_comparison(answer: str) -> str:
     # Try to extract agent_answer from JSON (may be embedded in text)
     json_match = re.search(r'\{\s*"agent_answer"\s*:\s*"([^"]*)"\s*\}', answer)
     if json_match:
-        answer = json_match.group(1).strip()
-    else:
-        # Try direct JSON parse
-        try:
-            parsed = json.loads(answer)
-            if isinstance(parsed, dict) and 'agent_answer' in parsed:
-                answer = str(parsed['agent_answer']).strip()
-        except (json.JSONDecodeError, TypeError):
-            pass
+        return json_match.group(1).strip()
+    # Try direct JSON parse
+    try:
+        parsed = json.loads(answer)
+        if isinstance(parsed, dict) and 'agent_answer' in parsed:
+            return str(parsed['agent_answer']).strip()
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return answer
+
+
+def normalize_answer_for_comparison(answer: str) -> str:
+    """Normalize an answer for comparison. If it's a comma-separated list of numbers, sort them."""
+    answer = extract_agent_answer(answer)
     # Check if it's a comma-separated list of numbers
     try:
         parts = [p.strip() for p in answer.split(',')]
@@ -52,6 +57,14 @@ def compare_answers(agent_answer: str, ground_truth: str) -> bool:
     norm_agent = normalize_answer_for_comparison(agent_answer)
     norm_gt = normalize_answer_for_comparison(ground_truth)
     return norm_agent == norm_gt
+
+
+def save_agent_answer(task_id: str, answer: str, output_file: str = "agent_answers.jsonl"):
+    """Append extracted agent answer to a JSONL file."""
+    extracted = extract_agent_answer(answer)
+    record = {"task_id": task_id, "agent_answer": extracted}
+    with open(output_file, 'a') as f:
+        f.write(json.dumps(record) + '\n')
 
 
 # Global variable to hold pre-extracted file structures
@@ -231,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers (default: 4)")
     parser.add_argument("--task", type=int, default=None, help="Solve a single task by row index")
     parser.add_argument("--task-id", type=str, default=None, help="Solve a single task by task_id field")
-    parser.add_argument("--output", type=str, default=None, help="Output file for results")
+    parser.add_argument("--output", type=str, default="agent_answers.jsonl", help="Output JSONL file for agent answers")
     parser.add_argument("--learn", action="store_true", help="Learn mode: find code that produces ground truth answer")
     parser.add_argument("--gt-answer", type=str, default=None, help="Ground truth answer for learn mode")
     parser.add_argument("--input", type=str, default="data/tasks_dev.json", help="Path to input tasks JSON file (default: data/tasks_dev.json)")
@@ -296,6 +309,7 @@ if __name__ == "__main__":
         print(f"Ground Truth Answer: {task_info.get('answer', 'N/A')}")
         print(f"Match: {compare_answers(answer, task_info.get('answer', ''))}")
         print(f"{'=' * 70}\n")
+        save_agent_answer(task_info.get('task_id', ''), answer, args.output)
     else:
         # Default: solve task 0
         with open(args.input, 'r') as f:
@@ -320,3 +334,4 @@ if __name__ == "__main__":
         print(f"Ground Truth Answer: {task_info.get('answer', 'N/A')}")
         print(f"Match: {compare_answers(answer, task_info.get('answer', ''))}")
         print(f"{'=' * 70}\n")
+        save_agent_answer(task_info.get('task_id', ''), answer, args.output)
