@@ -10,20 +10,10 @@ Shared functions for fee calculation tasks.
 # Data Loading
 def load_fees() -> List[Dict]
 def load_payments() -> pd.DataFrame
-def load_merchants() -> List[Dict]
-def load_acquirer_countries() -> pd.DataFrame
 def get_merchant_info(merchant_name: str) -> Optional[Dict]
 
 # Field Matching (null/empty = applies to all)
 def matches_list_field(field_value: Any, target: Any) -> bool
-def matches_bool_field(field_value: Any, target: bool) -> bool
-
-# Range Parsing
-def parse_volume_range(volume_str: Optional[str]) -> Optional[Tuple[float, float]]
-def parse_fraud_range(fraud_str: Optional[str]) -> Optional[Tuple[float, float]]
-
-# Criteria Matching
-def matches_capture_delay(fee_delay: Optional[str], merchant_delay: Any) -> bool
 
 # Fee Calculation
 def calculate_fee(fixed_amount: float, rate: float, transaction_value: float) -> float
