@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from agent import DataScienceAgent
 from tools import execute_python_code_tool, read_doc_tool, reset_execution_environment
 
@@ -57,14 +57,18 @@ Don't write anything else!
     def get_question(self, index: int) -> dict:
         return self._questions[index]
 
-    def solve(self, question_id: int) -> str:
-        """Solve a question by index."""
+    def solve(self, question_id: int) -> Tuple[str, List[str]]:
+        """Solve a question by index.
+
+        Returns:
+            Tuple of (answer, list of generated code snippets)
+        """
         reset_execution_environment()
         question = self.get_question(question_id)
 
         with open('new_solutions.md') as f:
             examples = f.read()
-        
+
 
         agent = DataScienceAgent(
             base_url=self.base_url,
@@ -92,4 +96,9 @@ GUIDELINES: {question.get('guidelines', 'N/A')}
 
 """
 
-        return agent.process_prompt(prompt)
+        result = agent.process_prompt(prompt)
+
+        # Get all generated code from agent
+        all_code = agent.get_generated_code()
+
+        return result, all_code
