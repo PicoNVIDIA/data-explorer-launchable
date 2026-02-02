@@ -48,6 +48,8 @@ class DataScienceAgent:
         final_prompt: Optional[str] = None,
         insert_reminder = False,
         clean_failed = False,
+        timeout: float = 60.0,
+        max_retries: int = 2,
     ):
         """
         Initialize the DataScienceAgent.
@@ -94,6 +96,8 @@ class DataScienceAgent:
         self.verbose = verbose
         self.stream = stream
         self.skip_final_response = skip_final_response
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.force_final_response_after_success = force_final_response_after_success
         self.awaiting_final_response = False
         self.tools = tools if tools is not None else ALL_TOOLS
@@ -104,7 +108,9 @@ class DataScienceAgent:
         # Initialize OpenAI client
         self.client = OpenAI(
             base_url=self.base_url,
-            api_key=self.api_key
+            api_key=self.api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries
         )
 
         default_sys_prompt = "/no_think " \
