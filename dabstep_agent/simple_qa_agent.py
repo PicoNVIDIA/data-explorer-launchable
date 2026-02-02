@@ -15,7 +15,7 @@ Write complete, executable Python code to answer the question.
 IMPORTANT: Do NOT assume variables exist. Always import libraries and load data files.
 Use pandas to explore tabular data.
 Use print() to show results. Preserve exact case of data values.
-If you need guidance on fee matching logic, use read_doc to read "./dabstep_agent/fee_matching_guide.md".
+If the question is about matching fee with merchent and transaction, use read_doc tool to read "./dabstep_agent/fee_matching_guide.md".
 """
 
     def __init__(
@@ -33,7 +33,11 @@ If you need guidance on fee matching logic, use read_doc to read "./dabstep_agen
         self.verbose = verbose
         self.api_key = os.environ.get("NV_INFER")
         self.base_url = "https://inference-api.nvidia.com"
-        self.model = "openai/openai/gpt-5-mini"
+        self.model = "aws/anthropic/claude-haiku-4-5-v1"
+        #"azure/openai/gpt-4o-mini" 
+        #"azure/openai/o4-mini"
+        #"nvidia/openai/gpt-oss-20b"
+        #"openai/openai/gpt-5-mini"
 
         with open(tasks_file, 'r') as f:
             self._questions = json.load(f)

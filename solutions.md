@@ -2,14 +2,14 @@
 
 ## Task 5: Which issuing country has the highest number of transactions?
 
-**Data Source:** `data/payments.csv` → `issuing_country` column
+**Data Source:** `data/context/payments.csv` → `issuing_country` column
 
 **Approach:** Count transactions per issuing country, sort descending.
 
 **Code:**
 ```python
 import pandas as pd
-df = pd.read_csv('data/payments.csv')
+df = pd.read_csv('data/context/payments.csv')
 df['issuing_country'].value_counts().idxmax()
 ```
 
@@ -28,7 +28,7 @@ df['issuing_country'].value_counts().idxmax()
 
 ## Task 49: What is the top country (ip_country) for fraud?
 
-**Data Source:** `data/payments.csv` → `ip_country`, `eur_amount`, `has_fraudulent_dispute` columns
+**Data Source:** `data/context/payments.csv` → `ip_country`, `eur_amount`, `has_fraudulent_dispute` columns
 
 **Approach:** 
 According to manual.md
@@ -38,7 +38,7 @@ All volumes are specified in euros.
 **Code:**
 ```python
 import pandas as pd
-df = pd.read_csv('data/payments.csv')
+df = pd.read_csv('data/context/payments.csv')
 fraud_vol = df[df['has_fraudulent_dispute']].groupby('ip_country')['eur_amount'].sum()
 total_vol = df.groupby('ip_country')['eur_amount'].sum()
 (fraud_vol / total_vol).idxmax()
@@ -58,14 +58,14 @@ total_vol = df.groupby('ip_country')['eur_amount'].sum()
 
 ## Task 70: Is Martinis_Fine_Steakhouse in danger of getting a high-fraud rate fine?
 
-**Data Source:** `data/manual.md`
+**Data Source:** `data/context/manual.md`
 
 **Approach:** Search manual.md for "fine" definition. Manual only defines "fees", not "fines". No high-fraud rate fine is defined.
 
 **Code:**
 ```python
 # No code needed - conceptual lookup
-# grep -i "fine" data/manual.md shows no fine definitions
+# grep -i "fine" data/context/manual.md shows no fine definitions
 ```
 
 **Answer:** `Not Applicable`
@@ -74,7 +74,7 @@ total_vol = df.groupby('ip_country')['eur_amount'].sum()
 
 ## Task 1273: For credit transactions, what would be the average fee that GlobalCard would charge for 10 EUR?
 
-**Data Source:** `data/fees.json`
+**Data Source:** `data/context/fees.json`
 
 **Approach:**
 Filter GlobalCard fees where is_credit is True or null (null matches all per fee_matching_guide.md).
@@ -83,7 +83,7 @@ Fee formula: `fixed_amount + rate * transaction_value / 10000`
 **Code:**
 ```python
 import pandas as pd
-fees = pd.read_json('data/fees.json')
+fees = pd.read_json('data/context/fees.json')
 mask = (fees['card_scheme'] == 'GlobalCard') & ((fees['is_credit'].isna()) | (fees['is_credit'] == True))
 (fees[mask]['fixed_amount'] + fees[mask]['rate'] * 10 / 10000).mean()
 ```
@@ -94,7 +94,7 @@ mask = (fees['card_scheme'] == 'GlobalCard') & ((fees['is_credit'].isna()) | (fe
 
 ## Task 1305: For account type H and MCC "Eating Places and Restaurants", average GlobalCard fee for 10 EUR?
 
-**Data Source:** `data/fees.json`, `data/merchant_category_codes.csv`
+**Data Source:** `data/context/fees.json`, `data/context/merchant_category_codes.csv`
 
 **Approach:**
 1. Find MCC code for "Eating Places and Restaurants" → 5812
@@ -103,7 +103,7 @@ mask = (fees['card_scheme'] == 'GlobalCard') & ((fees['is_credit'].isna()) | (fe
 **Code:**
 ```python
 import pandas as pd
-fees = pd.read_json('data/fees.json')
+fees = pd.read_json('data/context/fees.json')
 mcc_code = 5812  # from merchant_category_codes.csv
 
 def matches(row):
@@ -125,7 +125,7 @@ matching = fees[fees.apply(matches, axis=1)]
 
 ## Task 1464: What fee IDs apply to account_type = R and aci = B?
 
-**Data Source:** `data/fees.json`
+**Data Source:** `data/context/fees.json`
 
 **Approach:**
 Filter fees where account_type includes 'R' (or empty) AND aci includes 'B' (or empty). Empty list matches all.
@@ -133,7 +133,7 @@ Filter fees where account_type includes 'R' (or empty) AND aci includes 'B' (or 
 **Code:**
 ```python
 import pandas as pd
-fees = pd.read_json('data/fees.json')
+fees = pd.read_json('data/context/fees.json')
 
 def matches(row):
     if row['account_type'] and 'R' not in row['account_type']:
@@ -152,7 +152,7 @@ matching = fees[fees.apply(matches, axis=1)]
 
 ## Task 1681: For the 10th day of 2023, what Fee IDs apply to Belles_cookbook_store?
 
-**Data Source:** `data/payments.csv`, `data/fees.json`, `data/merchant_data.json`
+**Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`
 
 **Approach:**
 1. Get merchant info (account_type=R, mcc=5942, capture_delay=1)
@@ -165,9 +165,9 @@ matching = fees[fees.apply(matches, axis=1)]
 import pandas as pd
 import json
 
-payments = pd.read_csv('data/payments.csv')
-fees = pd.read_json('data/fees.json')
-with open('data/merchant_data.json') as f:
+payments = pd.read_csv('data/context/payments.csv')
+fees = pd.read_json('data/context/fees.json')
+with open('data/context/merchant_data.json') as f:
     merchants = {m['merchant']: m for m in json.load(f)}
 
 merchant = merchants['Belles_cookbook_store']
@@ -193,11 +193,13 @@ day10 = payments[(payments['merchant'] == 'Belles_cookbook_store') &
 
 ## Task 1753: What are the applicable fee IDs for Belles_cookbook_store in March 2023?
 
-**Data Source:** `data/payments.csv`, `data/fees.json`, `data/merchant_data.json`
+**Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`
 
 **Approach:**
 Same as Task 1681, but for all transactions in March (days 60-90).
 Monthly metrics: volume=116,436, fraud_pct=10.25%
+
+**Gotcha:** Null values in `is_credit` and `intracountry` become `nan` (not `None`) in pandas. Use `pd.isna()` instead of `is not None`.
 
 **Code:**
 ```python
@@ -220,7 +222,7 @@ mar_txns = payments[
 
 ## Task 1871: In January 2023, what delta if fee ID=384's rate changed to 1?
 
-**Data Source:** `data/payments.csv`, `data/fees.json`
+**Data Source:** `data/context/payments.csv`, `data/context/fees.json`
 
 **Approach:**
 1. Fee 384: card_scheme=NexPay, is_credit=True, aci=['C','B'], rate=14
@@ -230,8 +232,8 @@ mar_txns = payments[
 **Code:**
 ```python
 import pandas as pd
-payments = pd.read_csv('data/payments.csv')
-fees = pd.read_json('data/fees.json')
+payments = pd.read_csv('data/context/payments.csv')
+fees = pd.read_json('data/context/fees.json')
 
 jan_txns = payments[
     (payments['merchant'] == 'Belles_cookbook_store') &
@@ -251,7 +253,7 @@ delta = (1 - 14) * total / 10000      # -0.948103
 
 ## Task 2697: For Belles_cookbook_store in January, move fraud txns to different ACI for lowest fees?
 
-**Data Source:** `data/payments.csv`, `data/fees.json`, `data/merchant_data.json`
+**Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`
 
 **Approach:**
 1. Find all January fraudulent transactions (94 txns, all have ACI=G)
