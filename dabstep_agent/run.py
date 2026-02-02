@@ -12,6 +12,48 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def normalize_answer_for_comparison(answer: str) -> str:
+    """Normalize an answer for comparison. If it's a comma-separated list of numbers, sort them."""
+    import re
+    if answer is None:
+        return ""
+    answer = str(answer).strip()
+    # Try to extract agent_answer from JSON (may be embedded in text)
+    json_match = re.search(r'\{\s*"agent_answer"\s*:\s*"([^"]*)"\s*\}', answer)
+    if json_match:
+        answer = json_match.group(1).strip()
+    else:
+        # Try direct JSON parse
+        try:
+            parsed = json.loads(answer)
+            if isinstance(parsed, dict) and 'agent_answer' in parsed:
+                answer = str(parsed['agent_answer']).strip()
+        except (json.JSONDecodeError, TypeError):
+            pass
+    # Check if it's a comma-separated list of numbers
+    try:
+        parts = [p.strip() for p in answer.split(',')]
+        # Try to parse all parts as numbers
+        numbers = [float(p) for p in parts if p]
+        # If we got here, it's a list of numbers - sort them
+        # Use int if all are integers, otherwise keep as float
+        if all(n == int(n) for n in numbers):
+            numbers = [int(n) for n in numbers]
+        numbers.sort()
+        return ', '.join(str(n) for n in numbers)
+    except (ValueError, AttributeError):
+        # Not a list of numbers, return as-is
+        return answer
+
+
+def compare_answers(agent_answer: str, ground_truth: str) -> bool:
+    """Compare two answers, sorting if they are comma-separated number lists."""
+    norm_agent = normalize_answer_for_comparison(agent_answer)
+    norm_gt = normalize_answer_for_comparison(ground_truth)
+    return norm_agent == norm_gt
+
+
 # Global variable to hold pre-extracted file structures
 _FILE_STRUCTURES = None
 
@@ -231,7 +273,50 @@ if __name__ == "__main__":
             gt_answer = args.gt_answer
         learn_single(task_index, gt_answer, tasks_file=args.input)
     elif task_index is not None:
-        solve_task(task_index, tasks_file=args.input)
+        # Load task info to display ground truth
+        with open(args.input, 'r') as f:
+            questions = json.load(f)
+        task_info = questions[task_index]
+
+        print(f"\n{'=' * 70}")
+        print(f"Task Index: {task_index}")
+        print(f"Task ID: {task_info.get('task_id', 'N/A')}")
+        print(f"Level: {task_info.get('level', 'N/A')}")
+        print(f"Question: {task_info.get('question', 'N/A')}")
+        print(f"Ground Truth Answer: {task_info.get('answer', 'N/A')}")
+        print(f"Guidelines: {task_info.get('guidelines', 'N/A')}")
+        print(f"{'=' * 70}\n")
+
+        answer = solve_task(task_index, tasks_file=args.input)
+
+        print(f"\n{'=' * 70}")
+        print(f"RESULT COMPARISON")
+        print(f"{'=' * 70}")
+        print(f"Agent Answer:       {answer}")
+        print(f"Ground Truth Answer: {task_info.get('answer', 'N/A')}")
+        print(f"Match: {compare_answers(answer, task_info.get('answer', ''))}")
+        print(f"{'=' * 70}\n")
     else:
-        # Default: solve task 1
-        solve_task(1, tasks_file=args.input)
+        # Default: solve task 0
+        with open(args.input, 'r') as f:
+            questions = json.load(f)
+        task_info = questions[0]
+
+        print(f"\n{'=' * 70}")
+        print(f"Task Index: 0")
+        print(f"Task ID: {task_info.get('task_id', 'N/A')}")
+        print(f"Level: {task_info.get('level', 'N/A')}")
+        print(f"Question: {task_info.get('question', 'N/A')}")
+        print(f"Ground Truth Answer: {task_info.get('answer', 'N/A')}")
+        print(f"Guidelines: {task_info.get('guidelines', 'N/A')}")
+        print(f"{'=' * 70}\n")
+
+        answer = solve_task(0, tasks_file=args.input)
+
+        print(f"\n{'=' * 70}")
+        print(f"RESULT COMPARISON")
+        print(f"{'=' * 70}")
+        print(f"Agent Answer:       {answer}")
+        print(f"Ground Truth Answer: {task_info.get('answer', 'N/A')}")
+        print(f"Match: {compare_answers(answer, task_info.get('answer', ''))}")
+        print(f"{'=' * 70}\n")
