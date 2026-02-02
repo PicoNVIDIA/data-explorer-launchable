@@ -142,6 +142,9 @@ class DataScienceAgent:
         # Track dataframes in the execution environment
         self.dataframes: Dict[str, Dict[str, Any]] = {}
 
+        # Track all generated code snippets
+        self.generated_code: List[str] = []
+
         if self.verbose:
             print("DataScienceAgent initialized")
             print(f"  Base URL: {self.base_url}")
@@ -510,6 +513,10 @@ class DataScienceAgent:
                     # Auto-add print() to last line if needed
                     if tool_name == "execute_python_code":
                         arguments = ensure_print_in_code(arguments)
+                        # Track generated code
+                        code = arguments.get("code", "")
+                        if code:
+                            self.generated_code.append(code)
 
                     if self.verbose:
                         print(f"  -> Calling tool: {tool_name}")
@@ -699,6 +706,7 @@ class DataScienceAgent:
         self.last_execution_result = None
         self.dataframes = {}
         self.awaiting_final_response = False
+        self.generated_code = []
 
         # Reset the execution environment (clears all variables)
         reset_result = reset_execution_environment()
@@ -732,6 +740,15 @@ class DataScienceAgent:
             List of message dictionaries
         """
         return self.messages.copy()
+
+    def get_generated_code(self) -> List[str]:
+        """
+        Get all code snippets generated during execution.
+
+        Returns:
+            List of code strings
+        """
+        return self.generated_code.copy()
 
     def get_last_execution_result(self) -> Optional[Dict[str, Any]]:
         """
