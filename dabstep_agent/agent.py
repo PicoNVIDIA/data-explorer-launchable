@@ -461,6 +461,7 @@ class DataScienceAgent:
                 })
 
                 # Execute each tool call
+                should_break_after_tools = False
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
 
@@ -613,9 +614,14 @@ class DataScienceAgent:
                             # 2. Execution failed (LLM needs to see error and retry)
                             # Removed status prints for cleaner output
 
-                            # Continue the loop to get the LLM's response
-                            break
-                if self.insert_reminder:
+                            # Mark that we should break after processing ALL tool calls
+                            # (don't break here - need to process remaining tool calls first)
+                            should_break_after_tools = True
+
+                # After processing ALL tool calls, break if needed
+                if should_break_after_tools:
+                    pass  # Continue to next iteration of while loop
+                elif self.insert_reminder:
                     self.messages.append({
                             "role": "user",
                             "content": self.insert_prompt
