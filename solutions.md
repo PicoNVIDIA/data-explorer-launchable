@@ -13,16 +13,6 @@ df = pd.read_csv('data/context/payments.csv')
 df['issuing_country'].value_counts().idxmax()
 ```
 
-**Results:**
-| Country | Transactions |
-|---------|--------------|
-| NL      | 29,622       |
-| IT      | 28,329       |
-| BE      | 23,040       |
-| SE      | 21,716       |
-| FR      | 14,175       |
-
-**Answer:** `NL`
 
 ---
 
@@ -44,15 +34,6 @@ total_vol = df.groupby('ip_country')['eur_amount'].sum()
 (fraud_vol / total_vol).idxmax()
 ```
 
-**Results:**
-| Country | Fraud Rate |
-|---------|------------|
-| BE      | 12.27%     |
-| NL      | 12.18%     |
-| SE      | 8.49%      |
-| FR      | 6.90%      |
-
-**Answer:** `B. BE`
 
 ---
 
@@ -67,8 +48,6 @@ total_vol = df.groupby('ip_country')['eur_amount'].sum()
 # No code needed - conceptual lookup
 # grep -i "fine" data/context/manual.md shows no fine definitions
 ```
-
-**Answer:** `Not Applicable`
 
 ---
 
@@ -88,7 +67,6 @@ mask = (fees['card_scheme'] == 'GlobalCard') & ((fees['is_credit'].isna()) | (fe
 (fees[mask]['fixed_amount'] + fees[mask]['rate'] * 10 / 10000).mean()
 ```
 
-**Answer:** `0.120132`
 
 ---
 
@@ -119,8 +97,6 @@ matching = fees[fees.apply(matches, axis=1)]
 (matching['fixed_amount'] + matching['rate'] * 10 / 10000).mean()
 ```
 
-**Answer:** `0.123217`
-
 ---
 
 ## Task 1464: What fee IDs apply to account_type = R and aci = B?
@@ -145,9 +121,6 @@ def matches(row):
 matching = fees[fees.apply(matches, axis=1)]
 ', '.join(map(str, sorted(matching['ID'].tolist())))
 ```
-
-**Answer:** `1, 2, 5, 6, 8, 9, 10, 12, 14, 15, 20, 21, ...` (485 fee IDs total)
-
 ---
 
 ## Task 1681: For the 10th day of 2023, what Fee IDs apply to Belles_cookbook_store?
@@ -187,8 +160,6 @@ day10 = payments[(payments['merchant'] == 'Belles_cookbook_store') &
 # ... (full matching logic)
 ```
 
-**Answer:** `286, 381, 454, 473, 477, 536, 572, 709, 741, 813`
-
 ---
 
 ## Task 1753: What are the applicable fee IDs for Belles_cookbook_store in March 2023?
@@ -216,8 +187,6 @@ mar_txns = payments[
 # Use same matching logic as Task 1681, applied to all March transactions
 ```
 
-**Answer:** `36, 51, 53, 64, 107, 123, 150, 163, 231, 249, 276, 286, 347, 381, 384, 394, 428, 454, 473, 477, 536, 556, 572, 595, 608, 626, 680, 709, 725, 741, 813, 868, 939, 960`
-
 ---
 
 ## Task 1871: In January 2023, what delta if fee ID=384's rate changed to 1?
@@ -244,10 +213,9 @@ jan_txns = payments[
     (payments['aci'].isin(['C', 'B']))
 ]
 total = jan_txns['eur_amount'].sum()  # 729.31
-delta = (1 - 14) * total / 10000      # -0.948103
+delta = (1 - 14) * total / 10000      
 ```
 
-**Answer:** `-0.94810300000000`
 
 ---
 
@@ -276,9 +244,5 @@ for aci in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
     total = sum(get_min_fee(txn, aci) for txn in jan_fraud)
     print(f'{aci}: {total:.2f}')
 ```
-
-**Note:** Not all card schemes have matching fees for all ACIs. GlobalCard with ACI E = 13.56.
-
-**Answer:** `E:13.57`
 
 ---
