@@ -6,9 +6,9 @@ general:
         output_path: ./traces.jsonl
         project: data-explorer-agent
 
-function_groups:
-  bash_function_group:
-    _type: bash_function_group
+functions:
+  bash:
+    _type: bash
 
 llms:
   agent_llm:
@@ -23,7 +23,7 @@ workflow:
   _type: tool_calling_agent
   llm_name: agent_llm
   verbose: true
-  tool_names: [bash_function_group]
+  tool_names: [bash]
   max_history: 100
   additional_instructions: |
     You are a file assistant that helps users navigate and manage files using bash commands.
