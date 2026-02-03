@@ -122,8 +122,7 @@ async def bash_function(config: BashFunctionConfig, builder: Builder):
 
     async def run_bash(command: str) -> str:
         """
-        Run a simple bash command. Only read-only commands like ls, find, grep, cat, head, tail, wc, pwd, echo, file, stat, du, df are allowed.
-        Destructive commands like rm, mv, cp, chmod, sudo are blocked.
+        Run a simple bash command. only the following commands are allowed: {ALLOWED_COMMANDS}
         """
         try:
             # Parse the command to get the base command
@@ -133,11 +132,13 @@ async def bash_function(config: BashFunctionConfig, builder: Builder):
 
             base_cmd = parts[0]
 
-            # Check if command is blocked
-            if base_cmd in BLOCKED_COMMANDS:
-                return f"Error: Command '{base_cmd}' is not allowed for safety reasons."
+            # Check if any blocked command appears anywhere in the command (handles chained commands)
+            words = command.split()
+            blocked_found = [word for word in words if word in BLOCKED_COMMANDS]
+            if blocked_found:
+                return f"Error: Command '{blocked_found[0]}' is not allowed for safety reasons."
 
-            # Check if command is in the allowed list
+            # Check if the base command is in the allowed list
             if base_cmd not in ALLOWED_COMMANDS:
                 return f"Error: Command '{base_cmd}' is not in the allowed list. Allowed commands: {', '.join(sorted(ALLOWED_COMMANDS))}"
 
