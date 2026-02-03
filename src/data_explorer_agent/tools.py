@@ -105,20 +105,18 @@ async def notebook_function_group(config: NotebookFunctionGroupConfig, builder: 
     yield group
 
 
-class BashFunctionGroupConfig(FunctionGroupBaseConfig, name="bash_function_group"):
+class BashFunctionConfig(FunctionBaseConfig, name="bash"):
     """
-    NAT function group for simple bash operations.
+    NAT function for simple bash operations.
     """
     pass
 
 
-@register_function_group(config_type=BashFunctionGroupConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
-async def bash_function_group(config: BashFunctionGroupConfig, builder: Builder):
+@register_function(config_type=BashFunctionConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
+async def bash_function(config: BashFunctionConfig, builder: Builder):
     """
-    Registers a function group for simple bash operations.
+    Registers a function for simple bash operations.
     """
-    group = FunctionGroup(config=config)
-
     ALLOWED_COMMANDS = {"ls", "find", "grep", "cat", "head", "tail", "wc", "pwd", "echo", "file", "stat", "du", "df"}
     BLOCKED_COMMANDS = {"rm", "rmdir", "mv", "cp", "chmod", "chown", "sudo", "su", "dd", "mkfs", "fdisk", "kill", "pkill", "shutdown", "reboot"}
 
@@ -165,6 +163,4 @@ async def bash_function_group(config: BashFunctionGroupConfig, builder: Builder)
         except subprocess.TimeoutExpired:
             return "Error: Command timed out after 30 seconds"
 
-    group.add_function(name="run_bash", fn=run_bash, description=run_bash.__doc__)
-
-    yield group
+    yield FunctionInfo.from_fn(run_bash, description=run_bash.__doc__)
