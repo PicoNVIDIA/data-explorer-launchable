@@ -205,13 +205,14 @@ delta = -Decimal('13') * total / Decimal('10000')
 **Approach:**
 1. Get January fraudulent transactions (94 txns)
 2. For each ACI (A-G), calculate total fees if fraud txns used that ACI
-3. Select ACI with lowest total fee
+3. Exclude the current ACI(s) already used by fraudulent transactions (the question asks for a *different* ACI)
+4. Select ACI with lowest total fee among the remaining alternatives
 
 **Code:**
 ```python
 from helper import (
     load_fees, load_payments, get_merchant_info, find_matching_fees,
-    filter_merchant_transactions, calculate_monthly_metrics, calculate_fee
+    filter_merchant_transactions, calculate_monthly_metrics, add_intracountry_flag, calculate_fee
 )
 
 fees, payments = load_fees(), load_payments()
@@ -219,26 +220,75 @@ m = get_merchant_info('Belles_cookbook_store')
 mcc, acct, cap_del = m['merchant_category_code'], m['account_type'], int(m['capture_delay'])
 
 txns = filter_merchant_transactions(payments, 'Belles_cookbook_store', 2023, 1)
-fraud_txns = txns[txns['has_fraudulent_dispute'] == True].copy()
-fraud_txns['intracountry'] = (fraud_txns['issuing_country'] == fraud_txns['acquirer_country']).astype(float)
+txns = add_intracountry_flag(txns)
+fraud_txns = txns[txns['has_fraudulent_dispute'] == True]
 
 metrics = calculate_monthly_metrics(txns)
 vol, fraud_lvl = metrics['volume'], metrics['fraud_rate_pct']
 
+# Get current ACIs used by fraudulent transactions
+current_acis = set(fraud_txns['aci'].unique())
+
 results = {}
 for aci in payments.aci.unique():
-    total_sum, count = 0.0, 0
+    total = 0.0
     for _, t in fraud_txns.iterrows():
-        matches = find_matching_fees(fees, t['card_scheme'], acct, mcc, t['is_credit'], aci,
-                                      t['intracountry'], cap_del, vol, fraud_lvl)
-        if matches:
-            # when there are multiple matching fees
-            # aggregate them
-            matched_fees = [calculate_fee(f['fixed_amount'], f['rate'], t['eur_amount']) for f in matches]
-            total_sum += sum(matched_fees)
-            count += 1
-    if count > 0:
-        results[aci] = round(total_sum, 2)
+        matching = find_matching_fees(fees, t['card_scheme'], acct, mcc, t['is_credit'], aci,
+                                       t['intracountry'], cap_del, vol, fraud_lvl)
+        for f in matching:
+            total += calculate_fee(f['fixed_amount'], f['rate'], t['eur_amount'])
+    results[aci] = round(total, 2)
 
-best = min(results, key=results.get)
+# Exclude current ACI(s) - the question asks to move to a DIFFERENT ACI
+other_results = {k: v for k, v in results.items() if k not in current_acis}
+best = min(other_results, key=other_results.get)
+```
+
+---
+
+## Which card scheme should a merchant steer traffic to for minimum fees in January 2023?
+
+**Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`
+
+**Approach:**
+1. Get all merchant transactions for the target month
+2. For each card scheme, simulate all transactions as if processed under that scheme
+3. Sum all matching fees per transaction
+4. Exclude the current card scheme(s) already used by the transactions (the question asks to steer to a *different* scheme)
+5. Select the card scheme with the lowest total fee among the remaining alternatives
+
+**Code:**
+```python
+from helper import (
+    load_fees, load_payments, get_merchant_info, find_matching_fees,
+    filter_merchant_transactions, calculate_monthly_metrics, add_intracountry_flag, calculate_fee
+)
+
+fees, payments = load_fees(), load_payments()
+m = get_merchant_info('MERCHANT_NAME')
+mcc, acct, cap_del = m['merchant_category_code'], m['account_type'], int(m['capture_delay'])
+
+txns = filter_merchant_transactions(payments, 'MERCHANT_NAME', 2023, 1)
+txns = add_intracountry_flag(txns)
+metrics = calculate_monthly_metrics(txns)
+vol, fraud_lvl = metrics['volume'], metrics['fraud_rate_pct']
+
+# Get current card schemes used by the transactions
+current_schemes = set(txns['card_scheme'].unique())
+
+results = {}
+for scheme in ['GlobalCard', 'NexPay', 'SwiftCharge', 'TransactPlus']:
+    total = 0.0
+    for _, t in txns.iterrows():
+        matching = find_matching_fees(fees, card_scheme=scheme, account_type=acct, mcc=mcc,
+                                       is_credit=t['is_credit'], aci=t['aci'],
+                                       intracountry=t['intracountry'], capture_delay=cap_del,
+                                       monthly_vol=vol, fraud_pct=fraud_lvl)
+        for f in matching:
+            total += calculate_fee(f['fixed_amount'], f['rate'], t['eur_amount'])
+    results[scheme] = total
+
+# Exclude current card scheme(s) - the question asks to steer to a DIFFERENT scheme
+other_results = {k: v for k, v in results.items() if k not in current_schemes}
+best = min(other_results, key=other_results.get)
 ```
