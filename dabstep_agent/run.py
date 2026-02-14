@@ -276,6 +276,7 @@ if __name__ == "__main__":
     parser.add_argument("--learn", action="store_true", help="Learn mode: find code that produces ground truth answer")
     parser.add_argument("--gt-answer", type=str, default=None, help="Ground truth answer for learn mode")
     parser.add_argument("--input", type=str, default="data/tasks_dev.json", help="Path to input tasks JSON file (default: data/tasks_dev.json)")
+    parser.add_argument("--workspace", type=str, default="workspace", help="Directory to save generated code files (default: workspace)")
 
     args = parser.parse_args()
 
@@ -331,7 +332,7 @@ if __name__ == "__main__":
         answer, code_snippets = solve_task(task_index, tasks_file=args.input)
 
         # Save generated code to workspace
-        save_generated_code(task_info.get('task_id', str(task_index)), code_snippets)
+        save_generated_code(task_info.get('task_id', str(task_index)), code_snippets, args.workspace)
 
         print(f"\n{'=' * 70}")
         print(f"RESULT COMPARISON")
@@ -359,7 +360,7 @@ if __name__ == "__main__":
         answer, code_snippets = solve_task(0, tasks_file=args.input)
 
         # Save generated code to workspace
-        save_generated_code(task_info.get('task_id', '0'), code_snippets)
+        save_generated_code(task_info.get('task_id', '0'), code_snippets, args.workspace)
 
         print(f"\n{'=' * 70}")
         print(f"RESULT COMPARISON")
