@@ -1,18 +1,20 @@
 #!/bin/bash
 
 usage() {
-    echo "Usage: $0 [INPUT_FILE] [NUM_PASSES]"
+    echo "Usage: $0 [INPUT_FILE] [NUM_PASSES] [TASK_INDICES]"
     echo ""
     echo "Run all tasks from a JSON file with multiple passes."
     echo ""
     echo "Arguments:"
-    echo "  INPUT_FILE   Path to tasks JSON file (default: data/tasks.json)"
-    echo "  NUM_PASSES   Number of passes to run (default: 1)"
+    echo "  INPUT_FILE    Path to tasks JSON file (default: data/tasks.json)"
+    echo "  NUM_PASSES    Number of passes to run (default: 1)"
+    echo "  TASK_IDS      Comma-separated task IDs to run a subset (optional)"
     echo ""
     echo "Examples:"
-    echo "  $0                          # Run data/tasks.json with 1 pass"
-    echo "  $0 data/tasks_dev.json      # Run dev tasks with 1 pass"
-    echo "  $0 data/tasks.json 3        # Run tasks with 3 passes"
+    echo "  $0                            # Run data/tasks.json with 1 pass"
+    echo "  $0 data/tasks_dev.json        # Run dev tasks with 1 pass"
+    echo "  $0 data/tasks.json 3          # Run tasks with 3 passes"
+    echo "  $0 data/tasks.json 1 1433,1434,1435  # Run only these task IDs"
     exit 0
 }
 
@@ -23,12 +25,18 @@ fi
 INPUT_FILE="${1:-data/tasks.json}"
 NUM_PASSES=${2:-1}
 
+TASK_FILTER="${3:-}"
+
 # Derive suffix from input filename (e.g., tasks_dev.json -> _dev, tasks.json -> "")
 BASENAME=$(basename "$INPUT_FILE" .json)
 SUFFIX="${BASENAME#tasks}"
 
-# Extract task IDs from JSON
-task_ids=$(jq -r '.[].task_id' "$INPUT_FILE")
+# Extract task IDs from JSON, optionally filtered by comma-separated task IDs
+if [ -n "$TASK_FILTER" ]; then
+    task_ids=$(echo "$TASK_FILTER" | tr ',' '\n')
+else
+    task_ids=$(jq -r '.[].task_id' "$INPUT_FILE")
+fi
 
 for pass in $(seq 1 $NUM_PASSES); do
     echo "=========================================="
