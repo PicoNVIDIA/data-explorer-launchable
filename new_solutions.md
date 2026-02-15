@@ -2,6 +2,8 @@
 
 **Key insight:** When a question asks for the "most expensive" or "cheapest" MCC/card_scheme "in general", use the **average** fee across all applicable fee rules (mean), not the maximum.
 
+**Key insight (ACI):** When a question asks for the "most expensive" or "cheapest" ACI for a credit/debit transaction on a given card_scheme, use the **sum** of fees across all matching rules per ACI. 
+
 ## Helper Module (`helper.py`)
 
 Shared functions for fee calculation tasks.
