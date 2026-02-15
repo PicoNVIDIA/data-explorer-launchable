@@ -1,4 +1,6 @@
-# Refactored Solutions
+# Insights and Examples
+
+**Key insight:** When a question asks for the "most expensive" or "cheapest" MCC/card_scheme "in general", use the **average** fee across all applicable fee rules (mean), not the maximum.
 
 ## Helper Module (`helper.py`)
 
