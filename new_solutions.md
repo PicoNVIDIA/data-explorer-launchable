@@ -2,7 +2,9 @@
 
 **Key insight:** When a question asks for the "most expensive" or "cheapest" MCC/card_scheme "in general", use the **average** fee across all applicable fee rules (mean), not the maximum.
 
-**Key insight (ACI):** When a question asks for the "most expensive" or "cheapest" ACI for a credit/debit transaction on a given card_scheme, use the **sum** of fees across all matching rules per ACI. 
+**Key insight (ACI):** When a question asks for the "most expensive" or "cheapest" ACI for a credit/debit transaction on a given card_scheme, use the **sum** of fees across all matching rules per ACI.
+
+**Key insight (affected merchants):** "Which merchants would have been affected" by a fee account_type change means merchants who currently match the fee but would **no longer match** after the change (account_type != new type).
 
 ## Helper Module (`helper.py`)
 
@@ -28,6 +30,7 @@ def calculate_monthly_metrics(df: pd.DataFrame) -> Dict[str, float]
 def add_intracountry_flag(df: pd.DataFrame, acquirer_country: Optional[str] = None) -> pd.DataFrame
 
 # Fee Rule Matching
+def matches_merchant_fields(fee: Dict, account_type: str, mcc: int, capture_delay: Any, monthly_vol: float, fraud_pct: float) -> bool
 def find_matching_fees(fees: List[Dict], card_scheme: str, account_type: str, mcc: int, is_credit: bool, aci: str, intracountry: bool, capture_delay: Any, monthly_vol: float, fraud_pct: float) -> List[Dict]
 ```
 
@@ -281,7 +284,7 @@ vol, fraud_lvl = metrics['volume'], metrics['fraud_rate_pct']
 current_schemes = set(txns['card_scheme'].unique())
 
 results = {}
-for scheme in ['GlobalCard', 'NexPay', 'SwiftCharge', 'TransactPlus']:
+for scheme in payments['card_scheme'].unique():
     total = 0.0
     for _, t in txns.iterrows():
         matching = find_matching_fees(fees, card_scheme=scheme, account_type=acct, mcc=mcc,
