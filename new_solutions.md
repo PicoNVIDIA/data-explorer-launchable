@@ -6,6 +6,8 @@
 
 **Key insight (affected merchants):** "Which merchants would have been affected" by a fee account_type change means merchants who currently match the fee but would **no longer match** after the change (account_type != new type).
 
+**Key insight (monthly metrics):** When calculating fee deltas for a year, compute `monthly_volume` and `monthly_fraud_level` **per month** (iterate months 1-12, filter transactions per month), not over the entire year — fee rules use monthly thresholds.
+
 ## Helper Module (`helper.py`)
 
 Shared functions for fee calculation tasks.
