@@ -324,63 +324,40 @@ def add_intracountry_flag(df: pd.DataFrame, acquirer_country: Optional[str] = No
 # FEE RULE MATCHING
 # =============================================================================
 
+def matches_merchant_fields(fee: Dict, account_type: str, mcc: int,
+                            capture_delay: Any, monthly_vol: float, fraud_pct: float) -> bool:
+    """
+    Check if a fee rule matches merchant-level criteria only.
+    """
+    if not matches_list_field(fee.get('account_type'), account_type):
+        return False
+    if not matches_list_field(fee.get('merchant_category_code'), mcc):
+        return False
+    if not matches_capture_delay(fee.get('capture_delay'), capture_delay):
+        return False
+    if not matches_monthly_volume(fee.get('monthly_volume'), monthly_vol):
+        return False
+    if not matches_fraud_level(fee.get('monthly_fraud_level'), fraud_pct):
+        return False
+    return True
+
+
 def matches_fee_rule(fee: Dict, card_scheme: str, account_type: str, mcc: int,
                      is_credit: bool, aci: str, intracountry: bool,
                      capture_delay: Any, monthly_vol: float, fraud_pct: float) -> bool:
     """
     Check if a fee rule matches all given criteria.
-
-    Args:
-        fee: Fee rule dictionary
-        card_scheme: Transaction card scheme
-        account_type: Merchant account type
-        mcc: Merchant category code
-        is_credit: Whether transaction is credit
-        aci: Authorization Characteristics Indicator
-        intracountry: Whether transaction is domestic
-        capture_delay: Merchant capture delay
-        monthly_vol: Monthly volume in EUR
-        fraud_pct: Monthly fraud rate as percentage
-
-    Returns:
-        True if the fee rule matches all criteria
     """
-    # Card scheme - must match exactly
     if fee['card_scheme'] != card_scheme:
         return False
-
-    # Account type - list field
-    if not matches_list_field(fee.get('account_type'), account_type):
+    if not matches_merchant_fields(fee, account_type, mcc, capture_delay, monthly_vol, fraud_pct):
         return False
-
-    # MCC - list field
-    if not matches_list_field(fee.get('merchant_category_code'), mcc):
-        return False
-
-    # is_credit - boolean field
     if not matches_bool_field(fee.get('is_credit'), is_credit):
         return False
-
-    # ACI - list field
     if not matches_list_field(fee.get('aci'), aci):
         return False
-
-    # Intracountry - boolean field
     if not matches_bool_field(fee.get('intracountry'), intracountry):
         return False
-
-    # Capture delay
-    if not matches_capture_delay(fee.get('capture_delay'), capture_delay):
-        return False
-
-    # Monthly volume
-    if not matches_monthly_volume(fee.get('monthly_volume'), monthly_vol):
-        return False
-
-    # Monthly fraud level
-    if not matches_fraud_level(fee.get('monthly_fraud_level'), fraud_pct):
-        return False
-
     return True
 
 
