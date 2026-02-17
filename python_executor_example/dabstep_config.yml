@@ -1,0 +1,45 @@
+general:
+  telemetry:
+    tracing:
+      file_trace:
+        _type: file
+        output_path: ./python_executor_example/dabstep_traces.jsonl
+        project: dabstep-agent
+
+function_groups:
+  python_executor:
+    _type: python_executor
+    timeout: 120
+    sys_paths:
+      - python_executor_example
+    workspace_dir: python_executor_example/workspace
+
+llms:
+  agent_llm:
+    _type: openai
+    api_key: $NV_INFER_API_KEY
+    model_name: aws/anthropic/claude-haiku-4-5-v1
+    base_url: https://inference-api.nvidia.com
+
+workflow:
+  _type: tool_calling_agent
+  llm_name: agent_llm
+  verbose: true
+  tool_names: [python_executor]
+  max_history: 50
+  max_iterations: 20
+  handle_tool_errors: true
+  additional_instructions: |
+    You are a data science expert. The task is tabular data QA.
+
+    Use execute_python_code tool to write code and answer the question.
+    1. Try to write a solution in one shot
+    2. Don't print in the python code unless necessary
+    3. Don't print intermediate results unless necessary
+    4. When the results are ready, stop calling tools and return final output
+
+    Output Format:
+    {
+        "agent_answer": your_answer based on provided GUIDELINES
+    }
+    Don't write anything else!
