@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Post-process JSONL file to extract string part from 'string:number' answers."""
 
+import argparse
 import json
 import re
 import sys
@@ -56,7 +57,7 @@ def load_tasks_questions(tasks_file='data/tasks.json'):
     return {str(t['task_id']): t.get('question', '') for t in tasks}
 
 
-def process_jsonl(input_file: str, output_file: str):
+def process_jsonl(input_file: str, output_file: str, extract_string=True):
     """Process JSONL file and write results to new file."""
     questions = load_tasks_questions()
     with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
@@ -66,7 +67,8 @@ def process_jsonl(input_file: str, output_file: str):
             data = json.loads(line)
             if 'agent_answer' in data:
                 data['agent_answer'] = extract_nested_answer(data['agent_answer'])
-                data['agent_answer'] = extract_string_part(data['agent_answer'])
+                if extract_string:
+                    data['agent_answer'] = extract_string_part(data['agent_answer'])
                 question = data.get('question', '') or questions.get(str(data.get('task_id', '')), '')
                 data['agent_answer'] = round_if_delta_question(
                     question, data['agent_answer'])
@@ -74,9 +76,12 @@ def process_jsonl(input_file: str, output_file: str):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print("Usage: python postprocess.py <input.jsonl> <output.jsonl>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Post-process JSONL answers.')
+    parser.add_argument('input', help='Input JSONL file')
+    parser.add_argument('output', help='Output JSONL file')
+    parser.add_argument('--no-extract-string', action='store_true',
+                        help='Disable extract_string_part processing')
+    args = parser.parse_args()
 
-    process_jsonl(sys.argv[1], sys.argv[2])
-    print(f"Processed {sys.argv[1]} -> {sys.argv[2]}")
+    process_jsonl(args.input, args.output, extract_string=not args.no_extract_string)
+    print(f"Processed {args.input} -> {args.output}")
