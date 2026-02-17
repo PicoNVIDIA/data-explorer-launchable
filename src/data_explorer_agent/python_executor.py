@@ -22,6 +22,10 @@ from nat.data_models.function import FunctionGroupBaseConfig
 
 logger = logging.getLogger(__name__)
 
+# Module-level registry so callers can invoke tools directly without an LLM roundtrip.
+# Populated when the function group is created by NAT.
+_tools: dict[str, callable] = {}
+
 
 class PythonExecutorConfig(FunctionGroupBaseConfig, name="python_executor"):
     """Stateful Python executor using exec() with a persistent namespace."""
@@ -174,5 +178,9 @@ async def python_executor(config: PythonExecutorConfig, builder: Builder):
         fn=reset_environment,
         description=reset_environment.__doc__,
     )
+
+    # Expose closures so callers can invoke them without an LLM roundtrip.
+    _tools["save_generated_code"] = save_generated_code
+    _tools["reset_environment"] = reset_environment
 
     yield group

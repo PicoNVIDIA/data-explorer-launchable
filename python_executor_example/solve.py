@@ -16,6 +16,7 @@ import os
 import re
 
 from nat.runtime.loader import load_workflow
+from data_explorer_agent.python_executor import _tools as executor_tools
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -175,10 +176,10 @@ async def main(args):
                     match = False
                     print(f"ERROR: {e}")
 
-                # Save generated code and reset for next task
+                # Save generated code and reset — called directly, no LLM needed.
                 try:
-                    async with workflow.run(f"Call save_generated_code with task_id=\"{task_id}\", then call reset_environment.") as runner:
-                        await runner.result()
+                    await executor_tools["save_generated_code"](task_id)
+                    await executor_tools["reset_environment"]()
                 except Exception:
                     pass
 
