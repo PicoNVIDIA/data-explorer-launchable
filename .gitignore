@@ -1,4 +1,6 @@
 .venv/
+standalone*
+exp
 __pycache__/
 .env
 .DS_Store
