@@ -16,6 +16,7 @@ import os
 import re
 
 from nat.runtime.loader import load_workflow
+from nat.plugins.langchain.agent.tool_calling_agent.agent import ToolCallAgentGraph
 from data_explorer_agent.python_executor import _tools as executor_tools
 from dotenv import load_dotenv
 
@@ -24,6 +25,43 @@ load_dotenv()
 DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(DIR, "dabstep_config.yml")
 DATA_DIR = "data/context"
+# ---------------------------------------------------------------------------
+# Monkey-patch agent_node to capture the full LLM message history.
+# state.messages grows each iteration; we snapshot it after every LLM call.
+# The last snapshot is the complete conversation.
+# ---------------------------------------------------------------------------
+_last_messages = []  # module-level; overwritten each agent_node call
+_original_agent_node = ToolCallAgentGraph.agent_node
+
+def _serialize_messages(messages) -> list[dict]:
+    out = []
+    for m in messages:
+        entry = {"role": m.type, "content": m.content}
+        if hasattr(m, "name") and m.name:
+            entry["tool_name"] = m.name
+        if hasattr(m, "tool_calls") and m.tool_calls:
+            entry["tool_calls"] = m.tool_calls
+        if hasattr(m, "tool_call_id") and m.tool_call_id:
+            entry["tool_call_id"] = m.tool_call_id
+        out.append(entry)
+    return out
+
+async def _tracing_agent_node(self, state):
+    global _last_messages
+    result = await _original_agent_node(self, state)
+    _last_messages = _serialize_messages(result.messages)
+    return result
+
+ToolCallAgentGraph.agent_node = _tracing_agent_node
+
+
+def save_trace(task_id: str, trace_dir: str = os.path.join(DIR, "traces")):
+    """Write the captured message history to traces/<task_id>.json."""
+    os.makedirs(trace_dir, exist_ok=True)
+    path = os.path.join(trace_dir, f"{task_id}.json")
+    with open(path, "w") as f:
+        json.dump(_last_messages, f, indent=2, ensure_ascii=False, default=str)
+    print(f"Trace saved: {path}")
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +214,8 @@ async def main(args):
                     match = False
                     print(f"ERROR: {e}")
 
+                save_trace(task_id)
+
                 # Save generated code and reset — called directly, no LLM needed.
                 try:
                     await executor_tools["save_generated_code"](task_id)
@@ -196,6 +236,7 @@ async def main(args):
                 record = {"task_id": task_id, "agent_answer": extracted}
                 with open(output_file, "a") as f:
                     f.write(json.dumps(record) + "\n")
+
 
         print(f"\nPass {pass_num} done. {correct}/{total} correct ({correct/total*100:.1f}%)")
         print(f"Results: {output_file}")
