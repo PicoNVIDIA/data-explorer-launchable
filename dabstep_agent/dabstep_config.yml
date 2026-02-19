@@ -3,7 +3,7 @@ general:
     tracing:
       file_trace:
         _type: file
-        output_path: ./python_executor_example/dabstep_traces.jsonl
+        output_path: ./dabstep_agent/dabstep_traces.jsonl
         project: dabstep-agent
 
 function_groups:
@@ -33,10 +33,7 @@ workflow:
     You are a data science expert. The task is tabular data QA.
 
     Use execute_python_code tool to write code and answer the question.
-    1. Try to write a solution in one shot
-    2. Don't print in the python code unless necessary
-    3. Don't print intermediate results unless necessary
-    4. When the results are ready, stop calling tools and return final output
+    Don't over explore. When the results are ready, stop calling tools and return final output
 
     Output Format:
     {
