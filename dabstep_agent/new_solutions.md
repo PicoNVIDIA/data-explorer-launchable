@@ -8,6 +8,8 @@
 
 **Key insight (monthly metrics):** When calculating fee deltas for a year, compute `monthly_volume` and `monthly_fraud_level` **per month** (iterate months 1-12, filter transactions per month), not over the entire year — fee rules use monthly thresholds.
 
+**Key insight (universal MCC rules):** fee rules with `merchant_category_code` = `null` or `[]` apply to **ALL** MCCs — do NOT skip them. Add their fees to every MCC.
+
 ## Helper Module (`helper.py`)
 
 Shared functions for fee calculation tasks.
