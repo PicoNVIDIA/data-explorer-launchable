@@ -4,7 +4,7 @@
 
 **Key insight (ACI):** When a question asks for the "most expensive" or "cheapest" ACI for a credit/debit transaction on a given card_scheme, use the **sum** of fees across all matching rules per ACI.
 
-**Key insight (affected merchants):** "Which merchants would have been affected" by a fee account_type change means merchants who currently match the fee but would **no longer match** after the change (account_type != new type).
+**Key insight (affected merchants):** "Which merchants would have been affected" by a fee account_type change means merchants who currently match the fee but would **no longer match** after the change. Check **all** fee criteria — merchant-level (capture_delay, volume, fraud, MCC) **and** transaction-level (card_scheme, is_credit, aci) — not just account_type.
 
 **Key insight (monthly metrics):** When calculating fee deltas for a year, compute `monthly_volume` and `monthly_fraud_level` **per month** (iterate months 1-12, filter transactions per month), not over the entire year — fee rules use monthly thresholds.
 

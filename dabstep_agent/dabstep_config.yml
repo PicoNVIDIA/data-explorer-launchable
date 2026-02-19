@@ -11,8 +11,8 @@ function_groups:
     _type: python_executor
     timeout: 120
     sys_paths:
-      - python_executor_example
-    workspace_dir: python_executor_example/workspace
+      - dabstep_agent
+    workspace_dir: dabstep_agent/workspace
 
 llms:
   agent_llm:
