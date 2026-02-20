@@ -207,22 +207,32 @@ def matches_capture_delay(fee_delay: Optional[str], merchant_delay: Any) -> bool
 
 
 def matches_monthly_volume(rule_vol: Optional[str], monthly_vol: float) -> bool:
-    """Check if monthly volume matches rule (simplified version)"""
+    """Check if monthly volume matches rule. '<X' is strict less-than, '>X' is strict greater-than."""
     if rule_vol is None:
         return True
+    rule_vol = rule_vol.strip()
     volume_range = parse_volume_range(rule_vol)
     if volume_range is None:
         return True
+    if rule_vol.startswith('<'):
+        return monthly_vol < volume_range[1]
+    elif rule_vol.startswith('>'):
+        return monthly_vol > volume_range[0]
     return volume_range[0] <= monthly_vol <= volume_range[1]
 
 
 def matches_fraud_level(rule_fraud: Optional[str], fraud_pct: float) -> bool:
-    """Check if fraud level matches rule (simplified version)"""
+    """Check if fraud level matches rule. '<X' is strict less-than, '>X' is strict greater-than."""
     if rule_fraud is None:
         return True
+    rule_fraud = rule_fraud.strip()
     fraud_range = parse_fraud_range(rule_fraud)
     if fraud_range is None:
         return True
+    if rule_fraud.startswith('<'):
+        return fraud_pct < fraud_range[1]
+    elif rule_fraud.startswith('>'):
+        return fraud_pct > fraud_range[0]
     return fraud_range[0] <= fraud_pct <= fraud_range[1]
 
 
