@@ -10,7 +10,7 @@
 
 **Key insight (universal MCC rules):** fee rules with `merchant_category_code` = `null` or `[]` apply to **ALL** MCCs — do NOT skip them. Add their fees to every MCC.
 
-**Key insight (fee matching):** For "applicable Fee IDs" questions, ALWAYS use `from helper import *` and call `find_matching_fees()` — never reimplement matching logic inline, as there are subtle edge cases (capture_delay categories, intracountry float-to-bool, null/empty-list semantics).
+**Key insight (use helper.py):** For ALL fee-related tasks, first read the function signatures and examples below, then import the needed functions from helper.py — only write custom logic when helper.py doesn't cover the need. Never reimplement matching/filtering inline; helper.py handles subtle edge cases (capture_delay categories, intracountry float-to-bool, null/empty-list semantics).
 
 ## Helper Module (`helper.py`)
 
