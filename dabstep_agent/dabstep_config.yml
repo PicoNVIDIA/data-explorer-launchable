@@ -17,9 +17,9 @@ function_groups:
 llms:
   agent_llm:
     _type: openai
-    api_key: $NV_INFER_API_KEY
-    model_name: aws/anthropic/claude-haiku-4-5-v1
-    base_url: https://inference-api.nvidia.com
+    api_key: $API_KEY
+    model_name: claude-haiku-4-5
+    base_url: https://api.anthropic.com/v1/
 
 workflow:
   _type: tool_calling_agent
@@ -33,10 +33,8 @@ workflow:
     You are a data science expert. The task is tabular data QA.
 
     Use execute_python_code tool to write code and answer the question.
-    Don't over explore. Don't verify answer. Don't re-interpret the question.
-    Don't print unnecessary info.
+    Don't over explore. 
     When the results are ready, stop calling tools and return it as final output immediately.
-    Don't verify the results.
 
     Output Format:
     {
