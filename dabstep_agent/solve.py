@@ -25,24 +25,6 @@ load_dotenv()
 DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(DIR, "dabstep_config.yml")
 DATA_DIR = "data/context"
-LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", 30))
-
-# ---------------------------------------------------------------------------
-# Monkey-patch LLM HTTP timeout.
-# LangChain ChatOpenAI passes timeout=None to the OpenAI SDK by default,
-# which disables timeout entirely (overriding the httpx client's timeout).
-# We patch ChatOpenAI.__init__ to inject request_timeout when not set.
-# ---------------------------------------------------------------------------
-from langchain_openai import ChatOpenAI as _ChatOpenAI
-
-_orig_chat_init = _ChatOpenAI.__init__
-
-def _patched_chat_init(self, **kwargs):
-    if kwargs.get("timeout") is None and kwargs.get("request_timeout") is None:
-        kwargs["timeout"] = LLM_TIMEOUT
-    _orig_chat_init(self, **kwargs)
-
-_ChatOpenAI.__init__ = _patched_chat_init
 
 # ---------------------------------------------------------------------------
 # Monkey-patch agent_node to capture the full LLM message history.
@@ -74,7 +56,7 @@ async def _tracing_agent_node(self, state):
 ToolCallAgentGraph.agent_node = _tracing_agent_node
 
 
-def save_trace(task_id: str, trace_dir: str = os.path.join(DIR, "traces")):
+def save_trace(task_id: str, trace_dir: str = os.path.join(DIR, "workspace/traces")):
     """Write the captured message history to traces/<task_id>.json."""
     os.makedirs(trace_dir, exist_ok=True)
     path = os.path.join(trace_dir, f"{task_id}.json")
@@ -166,11 +148,6 @@ Examples:
 QUESTION: {question['question']}
 
 GUIDELINES: {question.get('guidelines', 'N/A')}
-
-Don't over explore. Don't verify answer. Don't re-interpret the question.
-Don't print unnecessary info.
-When the results are ready, stop calling tools and return it as final output immediately.
-Don't verify the results.
 """
 
 
