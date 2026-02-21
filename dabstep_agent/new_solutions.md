@@ -12,6 +12,8 @@
 
 **Key insight (fee matching):** For "applicable Fee IDs" questions, ALWAYS use `from helper import *` and call `find_matching_fees()` — never reimplement matching logic inline, as there are subtle edge cases (capture_delay categories, intracountry float-to-bool, null/empty-list semantics).
 
+**Key insight (multi-month date ranges):** When a question says "between X and Y" months (e.g. "between May and June"), filter using `day_of_year` covering **both full months**. Use `get_month_day_range()` from helper.py for each month and combine: `day_of_year >= start_of_first_month` and `day_of_year <= end_of_last_month`. For example, May–June = day 121–181, Jan–Feb = day 1–59, Mar–Apr = day 60–120. Do NOT filter month-by-month separately or use incorrect day boundaries.
+
 ## Helper Module (`helper.py`)
 
 Shared functions for fee calculation tasks.
@@ -22,6 +24,8 @@ Shared functions for fee calculation tasks.
 # Data Loading
 def load_fees() -> List[Dict]
 def load_payments() -> pd.DataFrame
+def load_merchants() -> List[Dict]
+def load_acquirer_countries() -> pd.DataFrame
 def get_merchant_info(merchant_name: str) -> Optional[Dict]
 
 # Field Matching (null/empty = applies to all)
@@ -31,6 +35,7 @@ def matches_list_field(field_value: Any, target: Any) -> bool
 def calculate_fee(fixed_amount: float, rate: float, transaction_value: float) -> float
 
 # Transaction Filtering
+def get_month_day_range(month: int) -> Tuple[int, int]  # returns (start_day, end_day) day_of_year for a given month (non-leap year)
 def filter_merchant_transactions(df: pd.DataFrame, merchant: str, year: int, month: int) -> pd.DataFrame
 def calculate_monthly_metrics(df: pd.DataFrame) -> Dict[str, float]
 def add_intracountry_flag(df: pd.DataFrame, acquirer_country: Optional[str] = None) -> pd.DataFrame
