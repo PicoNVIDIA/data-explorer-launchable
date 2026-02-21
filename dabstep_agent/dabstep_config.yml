@@ -33,7 +33,8 @@ workflow:
     You are a data science expert. The task is tabular data QA.
 
     Use execute_python_code tool to write code and answer the question.
-    Don't over explore. 
+    first identify the insights and examples useful for answering the quetion.
+    then explore the data but don't over explore. 
     When the results are ready, stop calling tools and return it as final output immediately.
 
     Output Format:
