@@ -12,6 +12,7 @@ import sys
 import contextlib
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 from pydantic import Field
 from nat.builder.workflow_builder import Builder
@@ -113,8 +114,15 @@ async def python_executor(config: PythonExecutorConfig, builder: Builder):
         stderr_capture = io.StringIO()
         try:
             start = time.time()
-            with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
-                _exec_with_auto_print(code, namespace)
+
+            def _run():
+                with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
+                    _exec_with_auto_print(code, namespace)
+
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(_run)
+                future.result(timeout=config.timeout)
+
             elapsed = time.time() - start
 
             stdout = stdout_capture.getvalue()
@@ -127,6 +135,9 @@ async def python_executor(config: PythonExecutorConfig, builder: Builder):
                 parts.append(f"[stderr] {stderr}")
             parts.append(f"[executed in {elapsed:.3f}s]")
             result = "\n".join(parts) if parts else "[executed successfully, no output]"
+        except TimeoutError:
+            elapsed = time.time() - start
+            result = f"Error (TimeoutError): Code execution exceeded {config.timeout}s timeout (ran for {elapsed:.1f}s). Simplify your code or increase the timeout."
         except Exception as e:
             result = f"Error ({type(e).__name__}): {e}"
 
