@@ -10,6 +10,8 @@
 
 **Key insight (universal MCC rules):** fee rules with `merchant_category_code` = `null` or `[]` apply to **ALL** MCCs — do NOT skip them. Add their fees to every MCC.
 
+**Key insight (MCC universe):** When a question asks for the "most expensive" or "cheapest" MCC "in general" (not for a specific merchant), enumerate MCCs from **`fees.json`** `merchant_category_code` lists — not from `merchant_data.json`. The fee rules define costs for ~49 MCCs, while merchant data only covers ~7. Using the merchant-only set misses MCCs that tie for highest/lowest fee, producing wrong answers. Also include MCCs that match universal rules (`merchant_category_code` = `null`/`[]`).
+
 **Key insight (fee matching):** For "applicable Fee IDs" questions, ALWAYS use `from helper import *` and call `find_matching_fees()` — never reimplement matching logic inline, as there are subtle edge cases (capture_delay categories, intracountry float-to-bool, null/empty-list semantics).
 
 **Key insight (intracountry flag):** Always call `add_intracountry_flag(df)` **without** the `acquirer_country` parameter — it uses the per-transaction `acquirer_country` column already present in `payments.csv`. Do **NOT** manually look up the acquirer's country from `acquirer_countries.csv` and pass it as `acquirer_country=` override, because that hardcodes a single country for all transactions and produces wrong intracountry flags.
