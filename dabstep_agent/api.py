@@ -93,6 +93,9 @@ class SolveResponse(BaseModel):
 _solve_lock = asyncio.Lock()
 
 
+SOLVE_TIMEOUT = int(os.environ.get("SOLVE_TIMEOUT", 270))  # seconds
+
+
 @app.post("/solve", response_model=SolveResponse)
 async def solve(req: SolveRequest):
     async with _solve_lock:
@@ -101,7 +104,17 @@ async def solve(req: SolveRequest):
 
         try:
             async with _workflow.run(prompt) as runner:
-                raw_answer = await runner.result()
+                raw_answer = await asyncio.wait_for(
+                    runner.result(), timeout=SOLVE_TIMEOUT
+                )
+        except asyncio.TimeoutError:
+            print(f"Solve timed out after {SOLVE_TIMEOUT}s")
+            # Reset executor state before returning
+            try:
+                await executor_tools["reset_environment"]()
+            except Exception:
+                pass
+            return SolveResponse(agent_answer="", reasoning_trace=[])
         except Exception as e:
             return SolveResponse(
                 agent_answer=f"ERROR: {e}",
