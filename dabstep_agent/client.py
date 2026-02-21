@@ -11,6 +11,7 @@ Usage:
 import argparse
 import json
 import sys
+import time
 
 import requests
 from tqdm import tqdm
@@ -20,8 +21,9 @@ def main():
     parser = argparse.ArgumentParser(description="DABStep Agent API client")
     parser.add_argument("--input", required=True, help="Tasks JSON file")
     parser.add_argument("--task-id", default=None, help="Comma-separated task IDs (optional, default: all)")
-    parser.add_argument("--url", default="http://localhost:8080", help="API base URL")
+    parser.add_argument("--url", default="http://localhost:8081", help="API base URL")
     parser.add_argument("--output", default=None, help="Output JSONL file (default: results_api.jsonl)")
+    parser.add_argument("--timing", action="store_true", help="Record per-task timing")
     args = parser.parse_args()
 
     with open(args.input) as f:
@@ -45,6 +47,8 @@ def main():
         task_id = task.get("task_id", "?")
         tqdm.write(f"Task {task_id}: {task['question'][:100]}...")
 
+        if args.timing:
+            t0 = time.time()
         resp = requests.post(endpoint, json={
             "question": task["question"],
             "guidelines": task.get("guidelines", "N/A"),
@@ -60,6 +64,10 @@ def main():
             "agent_answer": result["agent_answer"],
             "reasoning_trace": result["reasoning_trace"],
         }
+        if args.timing:
+            elapsed = round(time.time() - t0, 2)
+            tqdm.write(f"  Time: {elapsed}s")
+            record["time_seconds"] = elapsed
         with open(output_file, "a") as f:
             f.write(json.dumps(record) + "\n")
 
