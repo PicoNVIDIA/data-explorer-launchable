@@ -12,6 +12,8 @@
 
 **Key insight (fee matching):** For "applicable Fee IDs" questions, ALWAYS use `from helper import *` and call `find_matching_fees()` — never reimplement matching logic inline, as there are subtle edge cases (capture_delay categories, intracountry float-to-bool, null/empty-list semantics).
 
+**Key insight (intracountry flag):** Always call `add_intracountry_flag(df)` **without** the `acquirer_country` parameter — it uses the per-transaction `acquirer_country` column already present in `payments.csv`. Do **NOT** manually look up the acquirer's country from `acquirer_countries.csv` and pass it as `acquirer_country=` override, because that hardcodes a single country for all transactions and produces wrong intracountry flags.
+
 **Key insight (multi-month date ranges):** When a question says "between X and Y" months (e.g. "between May and June"), filter using `day_of_year` covering **both full months**. Use `get_month_day_range()` from helper.py for each month and combine: `day_of_year >= start_of_first_month` and `day_of_year <= end_of_last_month`. For example, May–June = day 121–181, Jan–Feb = day 1–59, Mar–Apr = day 60–120. Do NOT filter month-by-month separately or use incorrect day boundaries.
 
 ## Helper Module (`helper.py`)
@@ -30,6 +32,7 @@ def get_merchant_info(merchant_name: str) -> Optional[Dict]
 
 # Field Matching (null/empty = applies to all)
 def matches_list_field(field_value: Any, target: Any) -> bool
+def matches_bool_field(field_value: Any, target: bool) -> bool
 
 # Fee Calculation
 def calculate_fee(fixed_amount: float, rate: float, transaction_value: float) -> float
@@ -42,6 +45,7 @@ def add_intracountry_flag(df: pd.DataFrame, acquirer_country: Optional[str] = No
 
 # Fee Rule Matching
 def matches_merchant_fields(fee: Dict, account_type: str, mcc: int, capture_delay: Any, monthly_vol: float, fraud_pct: float) -> bool
+def matches_fee_rule(fee: Dict, card_scheme: str, account_type: str, mcc: int, is_credit: bool, aci: str, intracountry: bool, capture_delay: Any, monthly_vol: float, fraud_pct: float) -> bool
 def find_matching_fees(fees: List[Dict], card_scheme: str, account_type: str, mcc: int, is_credit: bool, aci: str, intracountry: bool, capture_delay: Any, monthly_vol: float, fraud_pct: float) -> List[Dict]
 ```
 
@@ -309,4 +313,71 @@ for scheme in payments['card_scheme'].unique():
 # Exclude current card scheme(s) - the question asks to steer to a DIFFERENT scheme
 other_results = {k: v for k, v in results.items() if k not in current_schemes}
 best = min(other_results, key=other_results.get)
+```
+
+---
+
+## Which card scheme should a merchant steer traffic to for max/min fees over the year 2023?
+
+**Data Source:** `data/context/payments.csv`, `data/context/fees.json`, `data/context/merchant_data.json`
+
+**Approach:**
+1. Get all merchant transactions for 2023
+2. **Precompute** monthly metrics (volume, fraud) and intracountry-flagged transactions for each month (only 12 iterations)
+3. Build a `day_of_year → month` lookup so we can map each transaction to its precomputed metrics
+4. For each card scheme, iterate all transactions and sum fees using the precomputed per-month metrics
+5. Select the card scheme with the max (or min) total fee
+
+**CRITICAL:** Do NOT compute annual volume/fraud and pass them to `find_matching_fees`. Fee rules have `monthly_volume` and `monthly_fraud_level` thresholds — annual volume (~2.5M) matches completely different rules than monthly volume (~200K). Also do NOT recompute monthly metrics inside the per-transaction loop — precompute them once.
+
+**Code:**
+```python
+from helper import (
+    load_fees, load_payments, get_merchant_info, find_matching_fees,
+    filter_merchant_transactions, calculate_monthly_metrics, add_intracountry_flag,
+    calculate_fee, get_month_day_range
+)
+
+fees, payments = load_fees(), load_payments()
+m = get_merchant_info('MERCHANT_NAME')
+mcc, acct, cap_del = m['merchant_category_code'], m['account_type'], int(m['capture_delay'])
+
+# Precompute day_of_year -> month mapping
+day_to_month = {}
+for m_num in range(1, 13):
+    start, end = get_month_day_range(m_num)
+    for d in range(start, end + 1):
+        day_to_month[d] = m_num
+
+# Precompute monthly metrics (12 iterations, not 27K)
+monthly_metrics = {}
+for month in range(1, 13):
+    month_txns = filter_merchant_transactions(payments, 'MERCHANT_NAME', 2023, month)
+    if len(month_txns) == 0:
+        continue
+    metrics = calculate_monthly_metrics(month_txns)
+    monthly_metrics[month] = (metrics['volume'], metrics['fraud_rate_pct'])
+
+# Get all 2023 transactions with intracountry flag added once
+txns_2023 = payments[(payments['merchant'] == 'MERCHANT_NAME') & (payments['year'] == 2023)].copy()
+txns_2023 = add_intracountry_flag(txns_2023)
+
+results = {}
+for scheme in payments['card_scheme'].unique():
+    total_fees = 0.0
+    for _, t in txns_2023.iterrows():
+        month = day_to_month[t['day_of_year']]
+        vol, fraud_lvl = monthly_metrics[month]
+        matching = find_matching_fees(fees, card_scheme=scheme, account_type=acct, mcc=mcc,
+                                       is_credit=t['is_credit'], aci=t['aci'],
+                                       intracountry=t['intracountry'], capture_delay=cap_del,
+                                       monthly_vol=vol, fraud_pct=fraud_lvl)
+        for f in matching:
+            total_fees += calculate_fee(f['fixed_amount'], f['rate'], t['eur_amount'])
+    results[scheme] = total_fees
+
+# For max fees:
+best = max(results, key=results.get)
+# For min fees:
+# best = min(results, key=results.get)
 ```
