@@ -16,6 +16,10 @@
 
 **Key insight (year-long fee calculations):** When computing total fees for an entire year (e.g. "steer traffic to card scheme X for year 2023"), you MUST iterate months 1-12 and compute `monthly_volume`/`monthly_fraud_level` **per month** — do NOT compute them once for the whole year (annual volume ~2.5M matches completely different fee rules than monthly volume ~200K). **Precompute** monthly metrics and intracountry flags into a dict keyed by month **before** the main loop to avoid redundantly recomputing them for every transaction — there are only 12 months but ~27K transactions.
 
+**Key insight (capture_delay):** Pass `capture_delay` from `merchant_data.json` as-is (string) to `find_matching_fees()`. Do NOT convert `'immediate'` to `0` or `'manual'` to any integer — the helper's `matches_capture_delay` handles these strings internally. Converting `'immediate'` to `0` causes false matches with `'<3'` rules.
+
+**Key insight (fee delta scope):** When a question says "what delta would **Merchant_X** pay if fee ID=N changed", only compute the delta on **Merchant_X's** transactions — do NOT include other merchants' transactions that also match the fee rule.
+
 **Key insight (multi-month date ranges):** When a question says "between X and Y" months (e.g. "between May and June"), filter using `day_of_year` covering **both full months**. Use `get_month_day_range()` from helper.py for each month and combine: `day_of_year >= start_of_first_month` and `day_of_year <= end_of_last_month`. For example, May–June = day 121–181, Jan–Feb = day 1–59, Mar–Apr = day 60–120. Do NOT filter month-by-month separately or use incorrect day boundaries.
 
 ## Helper Module (`helper.py`)
