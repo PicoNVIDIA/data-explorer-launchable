@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import sys
+import time
 
 from contextlib import asynccontextmanager
 
@@ -94,11 +95,18 @@ _solve_lock = asyncio.Lock()
 
 
 SOLVE_TIMEOUT = int(os.environ.get("SOLVE_TIMEOUT", 270))  # seconds
+SOLVE_LOG = os.environ.get("SOLVE_LOG", os.path.join(DIR, "solve_log.jsonl"))
+
+
+def _append_log(record: dict):
+    with open(SOLVE_LOG, "a") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 @app.post("/solve", response_model=SolveResponse)
 async def solve(req: SolveRequest):
     async with _solve_lock:
+        t0 = time.time()
         question = {"question": req.question, "guidelines": req.guidelines}
         prompt = build_prompt(question, _file_structures, _examples)
 
@@ -108,17 +116,34 @@ async def solve(req: SolveRequest):
                     runner.result(), timeout=SOLVE_TIMEOUT
                 )
         except asyncio.TimeoutError:
+            elapsed = round(time.time() - t0, 2)
             print(f"Solve timed out after {SOLVE_TIMEOUT}s")
             # Reset executor state before returning
             try:
                 await executor_tools["reset_environment"]()
             except Exception:
                 pass
+            _append_log({
+                "question": req.question,
+                "guidelines": req.guidelines,
+                "agent_answer": "",
+                "reasoning_trace": [],
+                "time_seconds": elapsed,
+            })
             return SolveResponse(agent_answer="", reasoning_trace=[])
         except Exception as e:
+            elapsed = round(time.time() - t0, 2)
+            trace = list(_solve_mod._last_messages)
+            _append_log({
+                "question": req.question,
+                "guidelines": req.guidelines,
+                "agent_answer": f"ERROR: {e}",
+                "reasoning_trace": trace,
+                "time_seconds": elapsed,
+            })
             return SolveResponse(
                 agent_answer=f"ERROR: {e}",
-                reasoning_trace=list(_solve_mod._last_messages),
+                reasoning_trace=trace,
             )
 
         agent_answer = extract_agent_answer(raw_answer)
@@ -126,12 +151,21 @@ async def solve(req: SolveRequest):
         agent_answer = round_if_delta_question(req.question, agent_answer)
         agent_answer = str(agent_answer)
         trace = list(_solve_mod._last_messages)
+        elapsed = round(time.time() - t0, 2)
 
         # Reset executor state for next request
         try:
             await executor_tools["reset_environment"]()
         except Exception:
             pass
+
+        _append_log({
+            "question": req.question,
+            "guidelines": req.guidelines,
+            "agent_answer": agent_answer,
+            "reasoning_trace": trace,
+            "time_seconds": elapsed,
+        })
 
         return SolveResponse(agent_answer=agent_answer, reasoning_trace=trace)
 
