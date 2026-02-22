@@ -23,7 +23,8 @@ def main():
     parser.add_argument("--task-id", default=None, help="Comma-separated task IDs (optional, default: all)")
     parser.add_argument("--url", default="http://localhost:8081", help="API base URL")
     parser.add_argument("--output", default=None, help="Output JSONL file (default: results_api.jsonl)")
-    parser.add_argument("--timing", action="store_true", help="Record per-task timing")
+    parser.add_argument("--no-timing", dest="timing", action="store_false", help="Disable per-task timing")
+    parser.set_defaults(timing=True)
     args = parser.parse_args()
 
     with open(args.input) as f:

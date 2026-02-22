@@ -3,11 +3,13 @@ Common helper functions for fee calculation tasks.
 """
 
 import json
+import os
 import pandas as pd
 from typing import Optional, List, Tuple, Any, Dict
 
 # Data directory
-DATA_DIR = '/raid/jiwei/gitlab/llmtech/data-explorer-agent/data/context'
+_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(os.path.dirname(_DIR), 'data', 'context')
 
 
 # =============================================================================
