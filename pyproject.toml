@@ -10,6 +10,8 @@ dependencies = [
   "nbconvert>=7.16.6",
   "nbformat>=5.10.4",
   "nvidia-nat[langchain]>=1.5.0a20260216",
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.34.0",
 ]
 requires-python = ">=3.11,<3.14"
 description = "Custom NeMo Agent Toolkit Workflow"
