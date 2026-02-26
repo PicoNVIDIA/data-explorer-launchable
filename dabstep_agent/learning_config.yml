@@ -8,7 +8,7 @@ function_groups:
     timeout: 120
     sys_paths:
       - dabstep_agent
-    workspace_dir: dabstep_agent/workspace
+    workspace_dir: dabstep_agent/workspace/learning_traces
 
 llms:
   agent_llm:
