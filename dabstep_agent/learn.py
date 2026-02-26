@@ -17,6 +17,7 @@ import os
 import re
 import time
 
+import yaml
 from nat.runtime.loader import load_workflow
 from nat.plugins.langchain.agent.tool_calling_agent.agent import ToolCallAgentGraph
 from data_explorer_agent.python_executor import _tools as executor_tools
@@ -27,6 +28,10 @@ load_dotenv()
 DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(DIR, "learning_config.yml")
 DATA_DIR = "data/context"
+
+with open(CONFIG) as _f:
+    _config = yaml.safe_load(_f)
+WORKSPACE_DIR = _config["function_groups"]["python_executor"]["workspace_dir"]
 
 # ---------------------------------------------------------------------------
 # Monkey-patch agent_node to capture full LLM message history (same as solve.py)
@@ -65,7 +70,7 @@ def save_trace(
     agent_answer: str,
     match: bool | None,
     elapsed: float,
-    trace_dir: str = os.path.join(DIR, "workspace/learning_traces"),
+    trace_dir: str = WORKSPACE_DIR,
 ):
     os.makedirs(trace_dir, exist_ok=True)
     record = {
@@ -118,15 +123,29 @@ def extract_agent_answer(answer: str) -> str:
     if answer is None:
         return ""
     answer = str(answer).strip()
+    # Match both quoted string values and unquoted numeric values
     json_match = re.search(r'\{\s*"agent_answer"\s*:\s*"([^"]*)"\s*\}', answer)
     if json_match:
         return json_match.group(1).strip()
+    json_match = re.search(r'\{\s*"agent_answer"\s*:\s*([-\d.eE+]+)\s*\}', answer)
+    if json_match:
+        return json_match.group(1).strip()
+    # Try parsing the whole string as JSON
     try:
         parsed = json.loads(answer)
         if isinstance(parsed, dict) and "agent_answer" in parsed:
             return str(parsed["agent_answer"]).strip()
     except (json.JSONDecodeError, TypeError):
         pass
+    # Try to find a JSON object embedded in larger text
+    json_obj_match = re.search(r'\{[^{}]*"agent_answer"[^{}]*\}', answer)
+    if json_obj_match:
+        try:
+            parsed = json.loads(json_obj_match.group(0))
+            if "agent_answer" in parsed:
+                return str(parsed["agent_answer"]).strip()
+        except (json.JSONDecodeError, TypeError):
+            pass
     return answer
 
 
