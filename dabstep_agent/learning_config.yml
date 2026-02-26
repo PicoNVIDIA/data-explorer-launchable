@@ -1,11 +1,3 @@
-general:
-  telemetry:
-    tracing:
-      file_trace:
-        _type: file
-        output_path: ./dabstep_agent/learning_traces.jsonl
-        project: dabstep-learning
-
 functions:
   run_bash:
     _type: bash
