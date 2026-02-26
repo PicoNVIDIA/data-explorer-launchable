@@ -1,4 +1,6 @@
 import logging
+import subprocess
+import shlex
 
 from pydantic import Field
 from nat.builder.workflow_builder import Builder
@@ -101,3 +103,65 @@ async def notebook_function_group(config: NotebookFunctionGroupConfig, builder: 
     group.add_function(name="get_notebook_summary", fn=get_notebook_summary, description=get_notebook_summary.__doc__)
 
     yield group
+
+
+class BashFunctionConfig(FunctionBaseConfig, name="bash"):
+    """
+    NAT function for simple bash operations.
+    """
+    pass
+
+
+@register_function(config_type=BashFunctionConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])
+async def bash_function(config: BashFunctionConfig, builder: Builder):
+    """
+    Registers a function for simple bash operations.
+    """
+    ALLOWED_COMMANDS = {"ls", "find", "grep", "cat", "head", "tail", "wc", "pwd", "echo", "file", "stat", "du", "df"}
+    BLOCKED_COMMANDS = {"rm", "rmdir", "mv", "cp", "chmod", "chown", "sudo", "su", "dd", "mkfs", "fdisk", "kill", "pkill", "shutdown", "reboot"}
+
+    async def run_bash(command: str) -> str:
+        """
+        Run a simple bash command. only the following commands are allowed: {ALLOWED_COMMANDS}
+        """
+        try:
+            # Parse the command to get the base command
+            parts = shlex.split(command)
+            if not parts:
+                return "Error: Empty command"
+
+            base_cmd = parts[0]
+
+            # Check if any blocked command appears anywhere in the command (handles chained commands)
+            words = command.split()
+            blocked_found = [word for word in words if word in BLOCKED_COMMANDS]
+            if blocked_found:
+                return f"Error: Command '{blocked_found[0]}' is not allowed for safety reasons."
+
+            # Check if the base command is in the allowed list
+            if base_cmd not in ALLOWED_COMMANDS:
+                return f"Error: Command '{base_cmd}' is not in the allowed list. Allowed commands: {', '.join(sorted(ALLOWED_COMMANDS))}"
+
+            # Run the command
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            output = ""
+            if result.stdout:
+                output += result.stdout
+            if result.stderr:
+                output += f"\nStderr: {result.stderr}"
+            if result.returncode != 0:
+                output += f"\nReturn code: {result.returncode}"
+
+            return output.strip() if output.strip() else "(No output)"
+
+        except subprocess.TimeoutExpired:
+            return "Error: Command timed out after 30 seconds"
+
+    yield FunctionInfo.from_fn(run_bash, description=run_bash.__doc__)
