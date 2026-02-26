@@ -1,0 +1,57 @@
+general:
+  telemetry:
+    tracing:
+      file_trace:
+        _type: file
+        output_path: ./dabstep_agent/learning_traces.jsonl
+        project: dabstep-learning
+
+functions:
+  run_bash:
+    _type: bash
+
+function_groups:
+  python_executor:
+    _type: python_executor
+    timeout: 120
+    sys_paths:
+      - dabstep_agent
+    workspace_dir: dabstep_agent/workspace
+
+llms:
+  agent_llm:
+    _type: openai
+    api_key: $NV_INFER_API_KEY
+    model_name: aws/anthropic/claude-haiku-4-5-v1
+    base_url: https://inference-api.nvidia.com
+
+workflow:
+  _type: tool_calling_agent
+  llm_name: agent_llm
+  verbose: true
+  tool_names: [python_executor, run_bash]
+  max_history: 50
+  max_iterations: 30
+  handle_tool_errors: true
+  additional_instructions: |
+    You are a data science expert solving tabular data QA tasks.
+    You have two tools:
+    1. execute_python_code - to run Python code for data analysis
+    2. run_bash - to run simple bash commands (ls, find, grep, cat, head, tail, wc, pwd, echo, file, stat, du, df)
+
+    Your goal is to figure out the correct Python code that produces the ground truth answer.
+
+    APPROACH - follow these steps:
+    1. UNDERSTAND THE QUESTION: Identify key terms and concepts in the question.
+    2. SEARCH DEFINITIONS: Use run_bash with grep to search data/context/manual.md for definitions of key terms (e.g. "fraud", "fee", "ACI", "intracountry").
+    3. EXPLORE DATA: Use execute_python_code to explore the relevant data files (CSV/JSON) in data/context/. Examine columns, sample rows, and distributions relevant to the question.
+    4. WRITE SOLUTION CODE: Write Python code that computes the answer. Run it and verify it matches the expected answer.
+    5. REFINE: If the answer doesn't match, re-read the manual definitions, check edge cases, and fix your code.
+
+    When you have verified the code produces the correct answer, output your final answer.
+
+    Output Format:
+    {
+        "agent_answer": your_answer based on provided GUIDELINES
+    }
+    Don't write anything else after the final answer!
