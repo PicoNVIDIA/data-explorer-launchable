@@ -14,6 +14,8 @@ import sys
 import time
 
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from tqdm import tqdm
 
 
@@ -53,7 +55,7 @@ def main():
         resp = requests.post(endpoint, json={
             "question": task["question"],
             "guidelines": task.get("guidelines", "N/A"),
-        })
+        }, verify=False)
         resp.raise_for_status()
         result = resp.json()
 
