@@ -9,9 +9,9 @@ from the learning traces directory, then prompts an LLM agent to:
   4. Verify every helper function against ground truth answers
 
 Usage:
-    uv run python dabstep_agent/distill.py
-    uv run python dabstep_agent/distill.py --traces-dir dabstep_agent/workspace/learning_traces
-    uv run python dabstep_agent/distill.py --output-dir dabstep_agent
+    uv run python dabstep_agent/learn/distill_nat/distill.py
+    uv run python dabstep_agent/learn/distill_nat/distill.py --traces-dir dabstep_agent/workspace/learning_traces
+    uv run python dabstep_agent/learn/distill_nat/distill.py --output-dir dabstep_agent/learn/distill_nat
 """
 
 import argparse
@@ -30,6 +30,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(DIR, "..", "..", ".."))
 CONFIG = os.path.join(DIR, "distill_config.yml")
 DATA_DIR = "data/context"
 
@@ -251,7 +252,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="DABStep distill: traces -> helper.py + solutions.md")
     parser.add_argument(
         "--traces-dir",
-        default=os.path.join(DIR, "workspace", "learning_traces"),
+        default=os.path.join(PROJECT_ROOT, "dabstep_agent", "workspace", "learning_traces"),
         help="Directory with learning trace .json and .py files",
     )
     parser.add_argument(

@@ -5,9 +5,9 @@ Reads learning traces (*.json + *.py) and prompts Claude to synthesize
 them into a clean helper.py + solutions.md.
 
 Usage:
-    python dabstep_agent/agent_sdk/distill/run_distill.py
-    python dabstep_agent/agent_sdk/distill/run_distill.py --traces-dir dabstep_agent/workspace/learning_traces
-    python dabstep_agent/agent_sdk/distill/run_distill.py --output-dir dabstep_agent
+    python dabstep_agent/learn/distill_agent_sdk/run_distill.py
+    python dabstep_agent/learn/distill_agent_sdk/run_distill.py --traces-dir dabstep_agent/workspace/learning_traces
+    python dabstep_agent/learn/distill_agent_sdk/run_distill.py --output-dir dabstep_agent/agent_sdk_distill_results
 """
 
 import argparse

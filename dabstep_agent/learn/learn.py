@@ -6,8 +6,8 @@ then explores data with python_executor, iterating until it produces
 code that matches the ground truth.
 
 Usage:
-    uv run python dabstep_agent/learn.py --input data/tasks_dev.json --task-id 49
-    uv run python dabstep_agent/learn.py --input data/tasks_dev.json --task-id 49,50,51
+    uv run python dabstep_agent/learn/learn.py --input data/tasks_dev.json --task-id 49
+    uv run python dabstep_agent/learn/learn.py --input data/tasks_dev.json --task-id 49,50,51
 """
 
 import argparse
