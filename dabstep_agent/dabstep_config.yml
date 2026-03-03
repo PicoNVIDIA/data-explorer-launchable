@@ -14,12 +14,12 @@ function_groups:
       - dabstep_agent
     workspace_dir: dabstep_agent/workspace
 
-llms:
-  agent_llm:
-    _type: openai
-    api_key: $API_KEY
-    model_name: claude-haiku-4-5
-    base_url: https://api.anthropic.com/v1/
+llms:                                                                                                
+  agent_llm:                                                                                         
+    _type: openai                                                                                    
+    api_key: $NV_INFER_API_KEY                                                                       
+    model_name: aws/anthropic/claude-haiku-4-5-v1                                                    
+    base_url: https://inference-api.nvidia.com 
 
 workflow:
   _type: tool_calling_agent
