@@ -9,7 +9,8 @@ from typing import Optional, List, Tuple, Any, Dict
 
 # Data directory
 _DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(os.path.dirname(_DIR), 'data', 'context')
+_PDIR = os.path.dirname(_DIR)
+DATA_DIR = os.path.join(os.path.dirname(_PDIR), 'data', 'context')
 
 
 # =============================================================================

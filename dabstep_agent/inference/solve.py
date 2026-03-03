@@ -4,9 +4,9 @@ DABStep task solver using NAT tool_calling_agent + python_executor.
 Replaces: run_all_tasks.sh + run.py + simple_qa_agent.py
 
 Usage:
-    uv run python python_executor_example/solve.py --input data/tasks_dev.json
-    uv run python python_executor_example/solve.py --input data/tasks.json --task-id 1433,1434
-    uv run python python_executor_example/solve.py --input data/tasks.json --passes 3
+    uv run python dabstep_agent/inference/solve.py --input data/tasks_dev.json
+    uv run python dabstep_agent/inference/solve.py --input data/tasks.json --task-id 1433,1434
+    uv run python dabstep_agent/inference/solve.py --input data/tasks.json --passes 3
 """
 
 import argparse

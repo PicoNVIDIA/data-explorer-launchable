@@ -1,11 +1,3 @@
-general:
-  telemetry:
-    tracing:
-      file_trace:
-        _type: file
-        output_path: ./dabstep_agent/dabstep_traces.jsonl
-        project: dabstep-agent
-
 function_groups:
   python_executor:
     _type: python_executor

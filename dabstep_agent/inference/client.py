@@ -2,10 +2,10 @@
 Client for DABStep Agent API.
 
 Usage:
-    uv run python dabstep_agent/client.py --input data/tasks.json --task-id 1712
-    uv run python dabstep_agent/client.py --input data/tasks.json --task-id 1712,1810
-    uv run python dabstep_agent/client.py --input data/tasks.json  # all tasks
-    uv run python dabstep_agent/client.py --input data/tasks.json --task-id 1712 --url http://localhost:8080
+    uv run python dabstep_agent/inference/client.py --input data/tasks.json --task-id 1712
+    uv run python dabstep_agent/inference/client.py --input data/tasks.json --task-id 1712,1810
+    uv run python dabstep_agent/inference/client.py --input data/tasks.json  # all tasks
+    uv run python dabstep_agent/inference/client.py --input data/tasks.json --task-id 1712 --url http://localhost:8080
 """
 
 import argparse

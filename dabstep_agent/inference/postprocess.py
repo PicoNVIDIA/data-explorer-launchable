@@ -27,18 +27,6 @@ def extract_nested_answer(answer):
     return answer
 
 
-def extract_string_part(answer: str) -> str:
-    """If answer is 'string:number', return just the string part."""
-    if not isinstance(answer, str):
-        return answer
-
-    # Match pattern: string followed by colon and number
-    match = re.match(r'^([^:]+):(-?\d+\.?\d*)$', answer.strip())
-    if match:
-        return match.group(1)
-    return answer
-
-
 def round_if_delta_question(question, answer):
     """Round numeric answer to 2 decimal places for fee delta questions."""
     if not question or not re.search(r'\bwhat delta\b', question, re.IGNORECASE):
@@ -57,7 +45,7 @@ def load_tasks_questions(tasks_file='data/tasks.json'):
     return {str(t['task_id']): t.get('question', '') for t in tasks}
 
 
-def process_jsonl(input_file: str, output_file: str, extract_string=True):
+def process_jsonl(input_file: str, output_file: str):
     """Process JSONL file and write results to new file."""
     questions = load_tasks_questions()
     with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
@@ -67,8 +55,6 @@ def process_jsonl(input_file: str, output_file: str, extract_string=True):
             data = json.loads(line)
             if 'agent_answer' in data:
                 data['agent_answer'] = extract_nested_answer(data['agent_answer'])
-                if extract_string:
-                    data['agent_answer'] = extract_string_part(data['agent_answer'])
                 question = data.get('question', '') or questions.get(str(data.get('task_id', '')), '')
                 data['agent_answer'] = round_if_delta_question(
                     question, data['agent_answer'])
@@ -79,9 +65,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Post-process JSONL answers.')
     parser.add_argument('input', help='Input JSONL file')
     parser.add_argument('output', help='Output JSONL file')
-    parser.add_argument('--no-extract-string', action='store_true',
-                        help='Disable extract_string_part processing')
     args = parser.parse_args()
 
-    process_jsonl(args.input, args.output, extract_string=not args.no_extract_string)
+    process_jsonl(args.input, args.output)
     print(f"Processed {args.input} -> {args.output}")
