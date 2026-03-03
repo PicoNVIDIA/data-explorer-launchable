@@ -1,11 +1,15 @@
 # Data Explorer Agent
+
 This project is the NAT implementation of the agentic_EDA module of [CLI-Data-Explorer](https://gitlab-master.nvidia.com/kgmon-llm-tech/cli-data-explorer/-/tree/main/src/cli_data_explorer).
 
-A react agent with tools designed for Jupyter notebook manipulation. It can respond to user questions with data-driven analysis and insights. 
+A react agent with tools designed for Jupyter notebook manipulation. It can respond to user questions with data-driven analysis and insights.
+
+Using Data Explorer Agent, we achieved **1st place** on the [DABStep](https://huggingface.co/datasets/adyen/DABstep) tabular data QA benchmark. See [dabstep_agent/](dabstep_agent/) for the full pipeline.
+
 ## Features
 - **Notebook Manipulation Tools**: Adding/deleting/modifying a Jupyter cell. Automatic notebook execution after each action, and return cell output to the agent.
 - **Automated Data Analysis & Visualization**: Generate comprehensive data analysis notebooks with intelligent insights. Add visual plots if needed to complement the notebook report.
-- **Vision Analysis Feedback**: Uses a vision language models to provide feedback for generated visualizations so that the agent can iteratively improve the quality of plots inside the notebook. 
+- **Vision Analysis Feedback**: Uses vision language models to provide feedback for generated visualizations so that the agent can iteratively improve the quality of plots inside the notebook.
 - **Automatic Error Fixing**: Automatic notebook debugging and error correction
 
 ## Installation & Setup
@@ -20,7 +24,7 @@ export OPENAI_API_KEY="your-api-key"
 
 ## Quick Start
 
-The agent is NAT compatible. There are two ways to invoke the agent. 
+The agent is NAT compatible. There are two ways to invoke the agent.
 
 1. From python file, reference code in example.py
     ```bash
@@ -32,7 +36,7 @@ The agent is NAT compatible. There are two ways to invoke the agent.
     nat run --config_file src/data_explorer_agent/configs/config.yml --input "Based on this dataset in sample_data/QS_2025.csv, report the region that have the strongest education system. Make it a nice Notebook report."
     ```
 
-A example Notebook output of the above command is provided in `notebooks/example.ipynb`. 
+An example Notebook output of the above command is provided in `notebooks/example.ipynb`.
 
 Use the `--override` option to override values in config file. e.g. `--override workflow.verbose false`; or, change config directly.
 
@@ -40,14 +44,30 @@ Use the `--override` option to override values in config file. e.g. `--override 
 Inside `src/data_explorer_agent/configs/config.yml`, you can customize:
 * LLM model
 * path to the generated notebook path
-* executioni verboseness
+* execution verboseness
 * agent instruction (in additional_instructions field)
 
 ### Using Your Own Data
 A sample QS University Ranking dataset is provided. To use your own data, tell the agent the path to your dataset in input prompt.
 
-### Run Dabstep Eval
+## DABStep Agent
+
+Agent pipeline that won **1st place** on the [DABStep benchmark](https://huggingface.co/datasets/adyen/DABstep). The workflow has three stages: **download data**, **learn** (discover solutions + distill into reusable code), and **inference** (solve tasks at scale).
+
+All DABStep commands should be run from the root of the repository.
+
 ```bash
-export OPENAI_API_KEY=your_api_key
-uv run python dabstep/DABstep_eval.py --task 1
+# 1. Download data
+uv run python dabstep_agent/download_data.py
+
+# 2. Learn solutions from scratch, then distill
+uv run python dabstep_agent/learn/learn.py --input data/tasks_dev.json --task-id 49,50,51
+uv run python dabstep_agent/learn/distill_nat/distill.py          # Option A: distill via NAT
+python dabstep_agent/learn/distill_agent_sdk/run_distill.py       # Option B: distill via Claude Agent SDK
+
+# 3. Inference
+uv run python dabstep_agent/inference/server.py
+uv run python dabstep_agent/inference/client.py --input data/tasks.json
 ```
+
+See [`dabstep_agent/README.md`](dabstep_agent/README.md) for full details.
