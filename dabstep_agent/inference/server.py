@@ -2,8 +2,8 @@
 REST API for DABStep agent.
 
 Usage:
-    uv run python dabstep_agent/api.py
-    uv run python dabstep_agent/api.py --port 8080 --host 0.0.0.0
+    uv run python dabstep_agent/inference/server.py
+    uv run python dabstep_agent/inference/server.py --port 8080 --host 0.0.0.0
 
 Request:
     POST /solve
@@ -28,7 +28,7 @@ load_dotenv()
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Add dabstep_agent dir to sys.path so we can import solve.py directly
+# Add inference dir to sys.path so we can import solve.py / postprocess.py directly
 if DIR not in sys.path:
     sys.path.insert(0, DIR)
 
