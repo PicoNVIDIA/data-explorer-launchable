@@ -39,8 +39,9 @@ def main():
     if first_n is not None:
         predictions = predictions[:first_n]
 
-    # Load difficulty levels from all.jsonl
-    all_tasks = load_jsonl('data/all.jsonl')
+    # Load difficulty levels from tasks.json
+    with open('data/tasks.json', 'r') as f:
+        all_tasks = json.load(f)
     difficulty_dict = {int(item['task_id']): item.get('level', 'unknown') for item in all_tasks}
 
     # Create dictionaries by task_id
