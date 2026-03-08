@@ -5,6 +5,7 @@ src/data_explorer_agent/data_explorer_agent.py
 src/data_explorer_agent/notebook_util.py
 src/data_explorer_agent/register.py
 src/data_explorer_agent/tools.py
+src/data_explorer_agent/utils.py
 src/data_explorer_agent.egg-info/PKG-INFO
 src/data_explorer_agent.egg-info/SOURCES.txt
 src/data_explorer_agent.egg-info/dependency_links.txt
