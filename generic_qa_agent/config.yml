@@ -1,0 +1,36 @@
+function_groups:
+  python_executor:
+    _type: python_executor
+    timeout: 120
+    workspace_dir: generic_qa_agent/workspace
+
+llms:
+  agent_llm:
+    _type: openai
+    api_key: $NV_INFER_API_KEY
+    model_name: aws/anthropic/claude-haiku-4-5-v1
+    base_url: https://inference-api.nvidia.com
+    temperature: 0.0
+
+workflow:
+  _type: tool_calling_agent
+  llm_name: agent_llm
+  verbose: true
+  tool_names: [python_executor]
+  max_history: 50
+  max_iterations: 20
+  handle_tool_errors: true
+  additional_instructions: |
+    You are a data science expert. The task is to answer a question about tabular data.
+
+    Use the execute_python_code tool to explore the data and answer the question.
+    - First, list the files in the data directory to understand what is available.
+    - Then explore relevant files (check columns, sample rows, data types).
+    - Write code to compute the answer.
+    - When ready, return the final answer immediately.
+
+    Output Format:
+    {
+        "answer": <your answer here>
+    }
+    Don't write anything else!
