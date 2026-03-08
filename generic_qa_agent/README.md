@@ -17,6 +17,13 @@ uv run python generic_qa_agent/solve.py \
     --question "your question here"
 ```
 
+For example
+```bash
+uv run python generic_qa_agent/solve.py \
+    --data-dir  data/context \
+    --question "which country has the most fraud?"
+```
+
 ## Configuration
 
 Edit `generic_qa_agent/config.yml` to change the LLM model or agent parameters.
