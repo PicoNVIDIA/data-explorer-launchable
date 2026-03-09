@@ -37,16 +37,16 @@ def scan_data_dir(data_dir: str) -> str:
     patterns = ["*.csv", "*.json", "*.jsonl", "*.parquet", "*.tsv", "*.xlsx"]
     found_files = []
     for pattern in patterns:
-        found_files.extend(glob_module.glob(os.path.join(data_dir, pattern)))
+        found_files.extend(glob_module.glob(os.path.join(data_dir, "**", pattern), recursive=True))
 
     if not found_files:
         lines.append("  (no data files found — agent will explore the directory)")
         return "\n".join(lines)
 
     for filepath in sorted(found_files):
-        filename = os.path.basename(filepath)
+        filename = os.path.relpath(filepath, data_dir)
         size_kb = os.path.getsize(filepath) / 1024
-        ext = os.path.splitext(filename)[1].lower()
+        ext = os.path.splitext(filepath)[1].lower()
 
         desc = ""
         try:
