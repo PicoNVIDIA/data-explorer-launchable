@@ -101,6 +101,18 @@ async def python_executor(config: PythonExecutorConfig, builder: Builder):
     async def execute_python_code(code: str) -> str:
         """Execute Python code. Variables persist between calls so you can
         build on previous results without reloading data."""
+        if "\\n" in code and "\n" not in code:
+            code = code.replace("\\n", "\n").replace("\\t", "\t")
+
+        if code_history and code_history[-1] == code:
+            repeat_count = sum(1 for c in code_history if c == code)
+            if repeat_count >= 2:
+                return (
+                    f"STOP: You already ran this exact code {repeat_count} times with the same result. "
+                    "Do NOT call any more tools. Return your final answer NOW as: "
+                    '{\"agent_answer\": \"your_answer\"}'
+                )
+
         code_history.append(code)
         call_count["n"] += 1
         n = call_count["n"]

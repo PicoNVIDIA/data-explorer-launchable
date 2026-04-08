@@ -10,14 +10,14 @@ from pydantic import BaseModel, Field
 import copy
 import base64
 import requests
-from openai import AzureOpenAI
+from openai import OpenAI
 import logging
 import subprocess
 logger = logging.getLogger(__name__)
 
 
 class VisionAnalyzerConfig(BaseModel):
-    provider: Literal["azure_openai", "nvidia_build"] = Field(description="The provider of the vision analyzer to use.")
+    provider: Literal["openai", "nvidia_build"] = Field(description="The provider of the vision analyzer to use.")
     model_name: str = Field(description="The model name to use.")
     api_key: str = Field(description="The API key to use.", default=None)
     api_base: str = Field(description="The API base to use.", default=None)
@@ -32,7 +32,7 @@ class NotebookManager:
         self.notebook = None
 
         # Initialize vision analyzer
-        if vision_config.provider == "azure_openai":
+        if vision_config.provider == "openai":
             self.vision_analyzer = OpenAIVisionAnalyzer(vision_config)
         elif vision_config.provider == "nvidia_build":
             self.vision_analyzer = NVBuildVisionAnalyzer(vision_config)
@@ -312,7 +312,9 @@ class NVBuildVisionAnalyzer:
         except requests.exceptions.Timeout:
             return "[Image output generated - Vision analysis timed out]"
         except requests.exceptions.RequestException as e:
-            logger.warning(f"Vision analysis failed: {str(e)}") 
+            # print full traceback
+            import traceback
+            logger.warning(f"Vision analysis failed: {traceback.format_exc()}")
             return f"[Image output generated - Vision analysis error: {str(e)[:100]}]"
         except Exception as e:
             logger.warning(f"Unexpected error in vision analysis: {str(e)}")
@@ -327,9 +329,8 @@ class OpenAIVisionAnalyzer:
         Initialize the vision analyzer.
         """
         self.config = config
-        self.client = AzureOpenAI(
-            azure_endpoint=config.api_base,
-            api_version=config.api_version,
+        self.client = OpenAI(
+            base_url=config.api_base,
             api_key=config.api_key,
         )
     

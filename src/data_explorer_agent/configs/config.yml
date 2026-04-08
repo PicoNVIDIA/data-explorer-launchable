@@ -3,7 +3,7 @@ general:
     tracing:
       file_trace:
         _type: file
-        output_path: ./traces.jsonl
+        output_path: ./traces_eda.jsonl
         project: data-explorer-agent
 
 function_groups:
@@ -11,7 +11,7 @@ function_groups:
     _type: notebook_function_group
     notebook_path: "notebooks/example.ipynb"
     vision_analyzer:
-      provider: nvidia_build
+      provider: openai
       model_name: openai/openai/gpt-5-mini
       api_key: $NV_INFER_API_KEY
       api_base: https://inference-api.nvidia.com
