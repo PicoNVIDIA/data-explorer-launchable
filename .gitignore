@@ -11,8 +11,8 @@ __pycache__/
 *.txt
 *.json
 *.jsonl
-!dabstep_agent/traces/**/*.json
-!dabstep_agent/traces/**/*.jsonl
+dabstep_agent/traces/
+traces*.jsonl
 data
 cufile.log
 workspace
