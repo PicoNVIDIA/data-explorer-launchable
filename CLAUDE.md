@@ -36,7 +36,7 @@ Built on **NeMo Agent Toolkit (NAT)** which provides the agent loops, tool regis
 
 ### 3. `notebooks/demo_eda.ipynb` (EDA notebook generation)
 - **Model**: `openai/openai/gpt-5-mini` (GPT-5 mini)
-- **Config**: `src/data_explorer_agent/configs/config.yml`
+- **Config**: `src/data_explorer_agent/configs/config_launchable.yml`
 - **Agent type**: `react_agent` with `notebook_function_group`
 - Agent auto-generates a complete Jupyter notebook with analysis and charts from any CSV
 - Uses vision analyzer for plot feedback
@@ -51,7 +51,7 @@ All models are on NVIDIA Inference Hub (`https://inference-api.nvidia.com`). Req
 |--------|-------|------------|
 | dabstep_config.yml | `nvidia/nvidia/nemotron-3-super-v3` | tool_calling_agent |
 | generic_qa_agent/config.yml | `aws/anthropic/claude-haiku-4-5-v1` | tool_calling_agent |
-| config.yml (EDA) | `openai/openai/gpt-5-mini` | react_agent |
+| config_launchable.yml (EDA) | `openai/openai/gpt-5-mini` | react_agent |
 
 Nemotron 3 Super requires `temperature: 0.7` in the config or it returns empty responses.
 
@@ -102,7 +102,8 @@ Public repo: `https://github.com/PicoNVIDIA/data-explorer-launchable`
 - Nemotron 3 Super gets ~77% accuracy on hard DABStep questions (vs 89.95% with Claude Haiku). Some answers may be slightly off.
 - The "from scratch" comparison can hit context window limits on complex questions (expected behavior).
 - Inference Hub requires NVIDIA VPN connection.
-- Brev deployment not yet done -- waiting on review.
+- Brev deployment not yet done.
+- The `config_launchable.yml` must use `inference-api.nvidia.com` (not `integrate.api.nvidia.com`) so the `sk-` key works for all demos.
 
 ## People
 - **Patrick Moorhead** (pmoorhead@nvidia.com) -- built the launchable
