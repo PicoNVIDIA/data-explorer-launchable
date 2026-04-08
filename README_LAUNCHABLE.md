@@ -24,12 +24,13 @@ docker run -it --rm \
     data-explorer-agent
 ```
 
-Open http://localhost:8888 in your browser.
+Open http://localhost:8888 in your browser. It will open directly to the **START_HERE** notebook.
 
 ### 3. Explore the Demo Notebooks
 
 | Notebook | Description |
 |----------|-------------|
+| `notebooks/START_HERE.ipynb` | **Start here** -- Overview, results, architecture, and interactive quick demo |
 | `notebooks/demo_dabstep.ipynb` | **DABStep Inference** -- The leaderboard-winning agent on financial payments questions, with before/after comparison |
 | `notebooks/demo_qa.ipynb` | **General Tabular QA** -- Ask questions about any dataset with no prior knowledge |
 | `notebooks/demo_eda.ipynb` | **Open-ended EDA** -- Upload any tabular data and get an automated analysis notebook with visualizations |
