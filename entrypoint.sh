@@ -12,4 +12,5 @@ exec uv run jupyter lab \
     --no-browser \
     --allow-root \
     --NotebookApp.token="${JUPYTER_TOKEN}" \
-    --ServerApp.root_dir=/app
+    --ServerApp.root_dir=/app \
+    --LabApp.default_url='/lab/tree/notebooks/START_HERE.ipynb'
