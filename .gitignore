@@ -6,6 +6,7 @@ standalone*
 exp
 __pycache__/
 .env
+secrets.env
 .DS_Store
 *.csv
 *.txt
