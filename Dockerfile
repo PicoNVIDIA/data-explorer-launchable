@@ -21,6 +21,9 @@ RUN uv run python dabstep_agent/download_data.py && \
 EXPOSE 8888 8000
 
 ENV JUPYTER_TOKEN=""
+# API keys are passed at runtime via -e flags or .env file:
+#   ANTHROPIC_API_KEY - DABStep + QA demos (console.anthropic.com)
+#   OPENAI_API_KEY    - EDA demo (platform.openai.com)
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

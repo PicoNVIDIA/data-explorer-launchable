@@ -13,9 +13,9 @@ function_groups:
 llms:
   agent_llm:
     _type: openai
-    api_key: $NV_INFER_API_KEY
-    model_name: aws/anthropic/bedrock-claude-sonnet-4-6
-    base_url: https://inference-api.nvidia.com
+    api_key: $ANTHROPIC_API_KEY
+    model_name: anthropic/claude-sonnet-4-20250514
+    base_url: https://api.anthropic.com
 
 workflow:
   _type: tool_calling_agent

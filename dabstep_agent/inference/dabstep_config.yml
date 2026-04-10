@@ -8,11 +8,8 @@ function_groups:
 
 llms:
   agent_llm:
-    _type: openai
-    api_key: $NV_INFER_API_KEY
-    model_name: nvidia/nvidia/nemotron-3-super-v3
-    base_url: https://inference-api.nvidia.com
-    temperature: 0.7
+    _type: litellm
+    model_name: claude-haiku-4-5-20251001
 
 workflow:
   _type: tool_calling_agent

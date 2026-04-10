@@ -6,10 +6,8 @@ function_groups:
 
 llms:
   agent_llm:
-    _type: openai
-    api_key: $NV_INFER_API_KEY
-    model_name: aws/anthropic/claude-haiku-4-5-v1
-    base_url: https://inference-api.nvidia.com
+    _type: litellm
+    model_name: claude-haiku-4-5-20251001
 
 workflow:
   _type: tool_calling_agent
