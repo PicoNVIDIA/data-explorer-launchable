@@ -74,4 +74,4 @@ See [`inference/README.md`](inference/README.md) for full details.
 
 ## Environment
 
-Requires `$NV_INFER_API_KEY` set in your environment or `.env` file.
+Requires `$ANTHROPIC_API_KEY` set in your environment or `.env` file. Get a key at https://console.anthropic.com.

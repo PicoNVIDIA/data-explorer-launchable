@@ -8,19 +8,29 @@ Patrick Moorhead (PicoNVIDIA) built the launchable packaging. The core agent cod
 
 ## Architecture
 
-Docker container running two services:
+Docker container (or Brev instance) running two services:
 - **JupyterLab** (port 8888) -- user-facing demo notebooks
 - **FastAPI server** (port 8000) -- DABStep inference agent via `/solve` endpoint
 
-All LLMs are accessed via **NVIDIA Inference Hub** (`inference-api.nvidia.com`) using `sk-` API keys. No local GPU needed (CPU-only container).
+Each demo uses a different LLM provider via its native API. No local GPU needed (CPU-only container).
 
 Built on **NeMo Agent Toolkit (NAT)** which provides the agent loops, tool registration, and LLM abstraction.
+
+## API Keys
+
+Two API keys, one per provider. Each demo is independent -- you only need the key for the demo you want to run.
+
+| Env Var | Demo | Provider | Get a key |
+|---------|------|----------|-----------|
+| `ANTHROPIC_API_KEY` | DABStep + General QA | Anthropic API | https://console.anthropic.com |
+| `OPENAI_API_KEY` | EDA notebook gen | OpenAI API | https://platform.openai.com |
 
 ## Three Demo Notebooks
 
 ### 1. `notebooks/demo_dabstep.ipynb` (main demo)
-- **Model**: `nvidia/nvidia/nemotron-3-super-v3` (Nemotron 3 Super)
+- **Model**: `claude-haiku-4-5-20251001` (Claude Haiku) via LiteLLM
 - **Config**: `dabstep_agent/inference/dabstep_config.yml`
+- **Key**: `ANTHROPIC_API_KEY`
 - **Agent type**: `tool_calling_agent` with `python_executor`
 - Shows the leaderboard-winning agent answering financial payments questions
 - Uses distilled `helper.py` (22 functions) + few-shot examples (`new_solutions.md`)
@@ -28,32 +38,31 @@ Built on **NeMo Agent Toolkit (NAT)** which provides the agent loops, tool regis
 - The FastAPI server (`dabstep_agent/inference/server.py`) must be running for this notebook
 
 ### 2. `notebooks/demo_qa.ipynb` (general QA)
-- **Model**: `aws/anthropic/claude-haiku-4-5-v1` (Claude Haiku)
+- **Model**: `anthropic/claude-haiku-4-5-20251001` (Claude Haiku) via LiteLLM
 - **Config**: `generic_qa_agent/config.yml`
+- **Key**: `ANTHROPIC_API_KEY`
 - **Agent type**: `tool_calling_agent` with `python_executor`
 - Generic QA agent that works on any dataset with no prior knowledge (no helper.py)
-- Built by Alessio from the team (from MR #12 / `generic_qa_agent` branch)
+- Uses `_type: litellm` in NAT config (NAT has no native Anthropic provider)
 
 ### 3. `notebooks/demo_eda.ipynb` (EDA notebook generation)
-- **Model**: `openai/openai/gpt-5-mini` (GPT-5 mini)
+- **Model**: `gpt-5-mini` (GPT-5 mini)
 - **Config**: `src/data_explorer_agent/configs/config_launchable.yml`
+- **Key**: `OPENAI_API_KEY`
 - **Agent type**: `react_agent` with `notebook_function_group`
 - Agent auto-generates a complete Jupyter notebook with analysis and charts from any CSV
 - Uses vision analyzer for plot feedback
-- **IMPORTANT**: The `react_agent` only works with GPT-5 mini. Nemotron Super and Claude Haiku fail because they output in formats the ReAct parser doesn't understand (think tags, XML). Do NOT change this model without also changing the agent type.
+- **IMPORTANT**: The `react_agent` only works with GPT models. Nemotron Super and Claude Haiku fail because they output in formats the ReAct parser doesn't understand (think tags, XML). Do NOT change this model without also changing the agent type.
 
 ## Key Technical Details
 
 ### Models and Endpoints
-All models are on NVIDIA Inference Hub (`https://inference-api.nvidia.com`). Requires `sk-` keys (not `nvapi-` keys from build.nvidia.com). VPN required.
 
-| Config | Model | Agent Type |
-|--------|-------|------------|
-| dabstep_config.yml | `nvidia/nvidia/nemotron-3-super-v3` | tool_calling_agent |
-| generic_qa_agent/config.yml | `aws/anthropic/claude-haiku-4-5-v1` | tool_calling_agent |
-| config_launchable.yml (EDA) | `openai/openai/gpt-5-mini` | react_agent |
-
-Nemotron 3 Super requires `temperature: 0.7` in the config or it returns empty responses.
+| Config | Model | Endpoint | Key |
+|--------|-------|----------|-----|
+| dabstep_config.yml | `claude-haiku-4-5-20251001` | Anthropic API (via LiteLLM) | `ANTHROPIC_API_KEY` |
+| generic_qa_agent/config.yml | `anthropic/claude-haiku-4-5-20251001` | Anthropic API (via LiteLLM) | `ANTHROPIC_API_KEY` |
+| config_launchable.yml (EDA) | `gpt-5-mini` | `api.openai.com/v1` | `OPENAI_API_KEY` |
 
 ### The 3-Phase DABStep Architecture
 1. **Learning** (offline): Heavy model (Opus) solves training tasks, distills reusable functions into `helper.py` and few-shot examples (`new_solutions.md`)
@@ -79,11 +88,20 @@ The before/after comparison in `demo_dabstep.ipynb` uses questions from Jiwei's 
 docker build -t data-explorer-agent .
 docker run -d --name dea-test \
     -p 8888:8888 -p 8000:8000 \
-    -e NV_INFER_API_KEY=your_sk_key_here \
+    -e ANTHROPIC_API_KEY=sk-ant-your_key \
+    -e OPENAI_API_KEY=sk-your_key \
     data-explorer-agent
 ```
 
-The `entrypoint.sh` starts the FastAPI server in the background, then launches JupyterLab.
+The `entrypoint.sh` starts the FastAPI server in the background (if `ANTHROPIC_API_KEY` is set), then launches JupyterLab.
+
+## Brev Deployment
+
+```bash
+brev start https://github.com/PicoNVIDIA/data-explorer-launchable --setup-path setup.sh
+```
+
+Set API keys as environment variables before running, or create a `.env` file in the repo root.
 
 ## GitLab
 Team's internal GitLab repo: `gitlab-master.nvidia.com/kgmon-llm-tech/data-explorer-agent`. Requires a GitLab personal access token to pull.
@@ -98,12 +116,8 @@ Public repo: `https://github.com/PicoNVIDIA/data-explorer-launchable`
 - `aledev/kdd` -- Alessio's KDD work
 
 ## Known Issues
-- EDA demo only works with GPT-5 mini via Inference Hub. Other models fail the ReAct parser.
-- Nemotron 3 Super gets ~77% accuracy on hard DABStep questions (vs 89.95% with Claude Haiku). Some answers may be slightly off.
+- EDA demo only works with GPT models. Other models fail the ReAct parser.
 - The "from scratch" comparison can hit context window limits on complex questions (expected behavior).
-- Inference Hub requires NVIDIA VPN connection.
-- Brev deployment not yet done.
-- The `config_launchable.yml` must use `inference-api.nvidia.com` (not `integrate.api.nvidia.com`) so the `sk-` key works for all demos.
 
 ## People
 - **Patrick Moorhead** (pmoorhead@nvidia.com) -- built the launchable

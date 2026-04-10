@@ -74,7 +74,7 @@ python dabstep_agent/learn/distill_agent_sdk/run_distill.py --output-dir dabstep
 
 Both phases use YAML config files that define:
 
-- **LLM**: Model endpoint, API key (via `$NV_INFER_API_KEY`), and model name.
+- **LLM**: Model endpoint, API key (via `$ANTHROPIC_API_KEY`), and model name.
 - **Tools**: `python_executor` (with timeout and workspace dir) and `run_bash`.
 - **Workflow**: Max iterations, history length, and system instructions.
 
@@ -82,4 +82,4 @@ See `learning_config.yml` and `distill_nat/distill_config.yml` for details.
 
 ## Environment
 
-Requires `$NV_INFER_API_KEY` set in your environment (or `.env` file).
+Requires `$ANTHROPIC_API_KEY` set in your environment (or `.env` file).
