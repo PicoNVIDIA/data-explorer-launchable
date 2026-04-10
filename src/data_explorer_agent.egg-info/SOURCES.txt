@@ -3,6 +3,7 @@ pyproject.toml
 src/data_explorer_agent/__init__.py
 src/data_explorer_agent/data_explorer_agent.py
 src/data_explorer_agent/notebook_util.py
+src/data_explorer_agent/python_executor.py
 src/data_explorer_agent/register.py
 src/data_explorer_agent/tools.py
 src/data_explorer_agent/utils.py
