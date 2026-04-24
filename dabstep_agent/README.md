@@ -18,8 +18,7 @@ dabstep_agent/
 │   ├── solve.py               # Core solver (prompt, extraction, tracing)
 │   ├── postprocess.py         # Clean up JSONL result files
 │   ├── dabstep_config.yml     # NAT workflow config for inference
-│   └── new_solutions.md       # Few-shot examples for the solver prompt
-├── traces/                    # Traces saved from previous runs
+│   └── new_solutions.md       # Few-shot examples for the solver prompt (populated by distill)
 └── workspace/                 # Runtime artifacts (traces, generated code)
 ```
 

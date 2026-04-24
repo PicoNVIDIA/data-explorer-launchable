@@ -1,3 +1,0 @@
-dabstep_agent/traces/**/*.jsonl filter=lfs diff=lfs merge=lfs -text
-dabstep_agent/traces/**/*.json filter=lfs diff=lfs merge=lfs -text
-dabstep_agent/traces/**/*.py filter=lfs diff=lfs merge=lfs -text

@@ -51,7 +51,7 @@ brev start https://github.com/PicoNVIDIA/data-explorer-launchable --setup-path s
 
 ### DABStep Benchmark Inference
 
-The agent answers complex, multi-step questions about a financial payments dataset. It uses pre-distilled domain knowledge (`helper.py`) and few-shot examples to solve tasks in seconds.
+The agent answers complex, multi-step questions about a financial payments dataset. Inference relies on distilled domain knowledge (`dabstep_agent/inference/helper.py`) and few-shot examples (`dabstep_agent/inference/new_solutions.md`) that are **generated locally by running the learn → distill workflow** (see "Three-Phase Approach" below). The inference demo will not function until these files are populated.
 
 - **LLM**: Claude Haiku via Anthropic API
 - **Workflow**: Tool-calling agent with stateful Python executor
@@ -75,9 +75,25 @@ Give the agent any CSV, Parquet, or JSON file and an optional prompt. It generat
 
 ### The Three-Phase Approach
 
-1. **Learning** (offline): A heavyweight model solves training tasks and distills reusable functions into `helper.py`
-2. **Inference** (fast): A lightweight model uses the distilled code to solve new tasks in seconds
-3. **Reflection** (offline): Quality control via self-consistency checks, feeding insights back into inference
+1. **Learning** (offline): A heavyweight model solves training tasks and saves learning traces
+2. **Distill** (offline): Traces are distilled into reusable functions (`helper.py`) and few-shot examples (`new_solutions.md`)
+3. **Inference** (fast): A lightweight model uses the distilled artifacts to solve new tasks in seconds
+
+Run the full workflow locally to populate the inference artifacts:
+
+```bash
+# 1. Download data
+uv run python dabstep_agent/download_data.py
+
+# 2. Learn, then distill
+uv run python dabstep_agent/learn/learn.py --input data/tasks_dev.json --task-id 49,50,51
+uv run python dabstep_agent/learn/distill_nat/distill.py          # Option A: distill via NAT
+python dabstep_agent/learn/distill_agent_sdk/run_distill.py       # Option B: distill via Claude Agent SDK
+
+# 3. Inference
+uv run python dabstep_agent/inference/server.py
+uv run python dabstep_agent/inference/client.py --input data/tasks.json
+```
 
 ## Architecture
 
