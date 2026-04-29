@@ -49,19 +49,14 @@ from nat.runtime.loader import load_workflow
 # ---------------------------------------------------------------------------
 _workflow = None
 _file_structures = None
-_examples = None
 
 
 @asynccontextmanager
 async def lifespan(app):
-    """Start up: load workflow, file structures, and examples."""
-    global _workflow, _file_structures, _examples
+    """Start up: load workflow and file structures."""
+    global _workflow, _file_structures
 
     _file_structures = load_file_structures()
-
-    examples_path = os.path.join(DIR, "new_solutions.md")
-    with open(examples_path) as f:
-        _examples = f.read()
 
     async with load_workflow(CONFIG) as wf:
         _workflow = wf
@@ -108,7 +103,7 @@ async def solve(req: SolveRequest):
     async with _solve_lock:
         t0 = time.time()
         question = {"question": req.question, "guidelines": req.guidelines}
-        prompt = build_prompt(question, _file_structures, _examples)
+        prompt = build_prompt(question, _file_structures)
 
         try:
             async with _workflow.run(prompt) as runner:

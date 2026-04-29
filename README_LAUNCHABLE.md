@@ -1,8 +1,10 @@
 # Data Explorer Agent -- NVIDIA Launchable
 
-**#1 on the DABStep Leaderboard** | Built on NVIDIA NeMo Agent Toolkit (NAT)
+Built on NVIDIA NeMo Agent Toolkit (NAT)
 
-Data Explorer is an AI-powered agent for automated data analysis. It achieved state-of-the-art performance on the [DABStep benchmark](https://huggingface.co/datasets/adyen/DABstep) (Data Agent Benchmark for Multi-step Reasoning), outperforming solutions from AntGroup and Google AI with a **30x speedup** over the Claude Code baseline.
+Data Explorer is an AI-powered agent for automated data analysis. The full pipeline (learn → distill → inference) achieved **#1 on the [DABStep benchmark](https://huggingface.co/datasets/adyen/DABstep)** (Data Agent Benchmark for Multi-step Reasoning), outperforming solutions from AntGroup and Google AI with a **30x speedup** over the Claude Code baseline.
+
+This launchable demonstrates the **inference phase from scratch** -- a tool-calling agent reasoning over the DABStep data files with no pre-distilled domain knowledge. To reproduce the leaderboard-winning configuration, run the full learn → distill workflow locally (see "Three-Phase Approach" below).
 
 ## Quick Start
 
@@ -43,7 +45,7 @@ brev start https://github.com/PicoNVIDIA/data-explorer-launchable --setup-path s
 | Notebook | Description | API Key |
 |----------|-------------|---------|
 | `notebooks/START_HERE.ipynb` | **Start here** -- Overview, results, architecture, and interactive quick demo | `ANTHROPIC_API_KEY` |
-| `notebooks/demo_dabstep.ipynb` | **DABStep Inference** -- The leaderboard-winning agent with before/after comparison | `ANTHROPIC_API_KEY` |
+| `notebooks/demo_dabstep.ipynb` | **DABStep Inference** -- Watch a tool-calling agent solve DABStep tasks from scratch | `ANTHROPIC_API_KEY` |
 | `notebooks/demo_qa.ipynb` | **General Tabular QA** -- Ask questions about any dataset with no prior knowledge | `ANTHROPIC_API_KEY` |
 | `notebooks/demo_eda.ipynb` | **Open-ended EDA** -- Upload any tabular data and get an automated analysis notebook | `OPENAI_API_KEY` |
 
@@ -51,7 +53,7 @@ brev start https://github.com/PicoNVIDIA/data-explorer-launchable --setup-path s
 
 ### DABStep Benchmark Inference
 
-The agent answers complex, multi-step questions about a financial payments dataset. Inference relies on distilled domain knowledge (`dabstep_agent/inference/helper.py`) and few-shot examples (`dabstep_agent/inference/new_solutions.md`) that are **generated locally by running the learn → distill workflow** (see "Three-Phase Approach" below). The inference demo will not function until these files are populated.
+The agent answers complex, multi-step questions about a financial payments dataset. In this launchable it solves **from scratch** -- given only the data files (`payments.csv`, `fees.json`, etc.) and the question, the agent uses a Python executor to load, explore, and analyze the data through a tool-calling loop. For the leaderboard-winning configuration, populate `dabstep_agent/inference/helper.py` and `dabstep_agent/inference/new_solutions.md` by running the learn → distill workflow first (see "Three-Phase Approach" below).
 
 - **LLM**: Claude Haiku via Anthropic API
 - **Workflow**: Tool-calling agent with stateful Python executor
@@ -109,7 +111,7 @@ uv run python dabstep_agent/inference/client.py --input data/tasks.json
 │                                                            │
 │  DABStep Server (port 8000)                                │
 │    └── POST /solve -> Tool-calling Agent                   │
-│                       └── helper.py (distilled)            │
+│                       └── python_executor (pandas, numpy)  │
 │                                                            │
 │  Data: payments.csv, fees.json, merchant_data.json         │
 └────────────────────────────────────────────────────────────┘

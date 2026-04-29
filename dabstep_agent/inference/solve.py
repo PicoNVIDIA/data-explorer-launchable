@@ -134,16 +134,12 @@ def compare_answers(agent_answer: str, ground_truth: str) -> bool:
 # Prompt builder (from simple_qa_agent.py)
 # ---------------------------------------------------------------------------
 
-def build_prompt(question: dict, file_structures: str, examples: str) -> str:
+def build_prompt(question: dict, file_structures: str) -> str:
     return f"""
 Available data files in '{DATA_DIR}/':
 {file_structures}
 
-A helper python script is provided. "helper.py". Import functions from it in your code if needed.
-
-Carefully read the examples below
-Examples:
-{examples}
+You have access to the data files listed above. Use Python (pandas, numpy, etc.) via the python_executor tool to load, explore, and analyze the data as needed. Read any documentation files (e.g. manual.md, *-readme.md) in '{DATA_DIR}/' first to understand the data semantics before answering.
 
 QUESTION: {question['question']}
 
@@ -155,9 +151,9 @@ GUIDELINES: {question.get('guidelines', 'N/A')}
 # Solver
 # ---------------------------------------------------------------------------
 
-async def solve_task(workflow, question: dict, file_structures: str, examples: str) -> str:
+async def solve_task(workflow, question: dict, file_structures: str) -> str:
     """Send one task through the NAT workflow and return the raw answer."""
-    prompt = build_prompt(question, file_structures, examples)
+    prompt = build_prompt(question, file_structures)
     async with workflow.run(prompt) as runner:
         return await runner.result()
 
@@ -168,10 +164,6 @@ async def main(args):
         tasks = json.load(f)
 
     file_structures = load_file_structures()
-
-    examples_path = os.path.join(DIR, "new_solutions.md")
-    with open(examples_path) as f:
-        examples = f.read()
 
     # Filter tasks if --task-id provided
     if args.task_id:
@@ -205,7 +197,7 @@ async def main(args):
                 print(f"Q: {question['question'][:120]}...")
 
                 try:
-                    raw_answer = await solve_task(workflow, question, file_structures, examples)
+                    raw_answer = await solve_task(workflow, question, file_structures)
                     extracted = extract_agent_answer(raw_answer)
                     match = compare_answers(raw_answer, gt) if gt else None
                 except Exception as e:
